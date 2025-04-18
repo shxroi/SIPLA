@@ -24,10 +24,10 @@ Pada Progres yang telah dilakukan diminggu ini, Kelompok 7 telah membangun ponda
 - Mengimplementasikan fitur inti dari SIPLA (sesuai kebutuhan mitra).
 
 ## Contributions
-- **[Alsha Dwi Cahya]**: [Deskripsi kontribusi]
-- **[Muhammad Aqila Ardhi]**: [Deskripsi kontribusi]
-- **[Nanda Aulia Putri]**: [Deskripsi kontribusi]
-- **[Norbertino Eurakha Nandatoti]**: Merancang Endpoint API dan Halaman Web SIPLA.
+- **[Alsha Dwi Cahya]**: Membuat ERD untuk database SIPLA.
+- **[Muhammad Aqila Ardhi]**: Memperbaiki Class Diagram untuk SIPLA.
+- **[Nanda Aulia Putri]**: Membuat ERD untuk database SIPLA.
+- **[Norbertino Eurakha Nandatoti]**: Merancang Endpoint API dan Halaman Web SIPLA dan Menyusun Dokumen Laporan Progres Mingguan.
 
 ## Screenshots / Demo
 
