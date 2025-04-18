@@ -46,3 +46,6 @@ ini adalah beberapa Gambar/Screenshots dari Progres yang telah dilakukan pada mi
 
 - Halaman Lapangan SIPLA
 ![Gambar 5: Lapangan SIPLA](asset/lapangan.png)
+
+- ERD SIPLA
+![Gambar 6: ERD SIPLA](asset/ERD_SIPLA.jpg)
