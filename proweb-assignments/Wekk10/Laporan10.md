@@ -1,7 +1,13 @@
 # Laporan Progres Mingguan - SIPLA
-**Kelompok**: A7
+**Kelompok**: 7
+**Anggota** : 
+- Alsha Dwi Cahya 10231011
+- Muhammad Aqila Ardhi 10231057
+- Nanda Aulia Putri 10231067
+- Norbertino Eurakha Nandatoti 101231071
+
 **Mitra**: TQ1
-**Pekan ke-**: [9-15]
+**Pekan ke-**: [10]
 **Tanggal**: [18/04/2025]
 
 ## Progress Summary
