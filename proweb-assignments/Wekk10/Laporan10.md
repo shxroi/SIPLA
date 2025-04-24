@@ -1,5 +1,5 @@
 # Laporan Progres Mingguan - SIPLA
-**Kelompok**: 7
+**Kelompok**: 4
 **Anggota** : 
 - Alsha Dwi Cahya 10231011
 - Muhammad Aqila Ardhi 10231057

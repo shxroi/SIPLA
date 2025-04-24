@@ -1,4 +1,17 @@
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+
 function AdminDashboard() {
+  const navigate = useNavigate();
+  const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
+
+  useEffect(() => {
+    const token = localStorage.getItem('adminToken');
+    if (!token) {
+      navigate('/admin');
+    }
+  }, [navigate]);
+
   const bookings = [
     {
       id: 1,

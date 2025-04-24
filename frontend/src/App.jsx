@@ -5,6 +5,7 @@ import BookingForm from './pages/BookingForm';
 import FieldList from './pages/FieldList';
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminLogin from './pages/admin/Login';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
@@ -17,7 +18,14 @@ function App() {
             <Route path="/booking" element={<BookingForm />} />
             <Route path="/fields" element={<FieldList />} />
             <Route path="/admin" element={<AdminLogin />} />
-            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route 
+              path="/admin/dashboard" 
+              element={
+                <ProtectedRoute>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } 
+            />
           </Routes>
         </main>
       </div>
