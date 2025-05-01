@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
@@ -6,33 +6,43 @@ function AdminLogin() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Cek jika admin sudah login
+    const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
+    if (adminUser && adminUser.id) {
+      navigate('/admin/dashboard');
+    }
+  }, [navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    
-    console.log('Attempting login with:', { username, password });
-    
+    setIsLoading(true);
+
     try {
-      const response = await axios.post('http://localhost:3001/api/admin/login', {
+      const response = await axios.post('http://localhost:3000/api/admin/login', {
         username,
         password
+      }, {
+        withCredentials: true
       });
 
-      console.log('Login response:', response.data);
-
-      if (response.data.token) {
-        // Simpan token di localStorage
-        localStorage.setItem('adminToken', response.data.token);
+      if (response.data && response.data.user) {
+        // Simpan data admin
         localStorage.setItem('adminUser', JSON.stringify(response.data.user));
-        console.log('Login successful, redirecting...');
         // Redirect ke dashboard
         navigate('/admin/dashboard');
+      } else {
+        setError('Data login tidak valid');
       }
     } catch (err) {
       console.error('Login error:', err);
-      setError(err.response?.data?.message || 'Terjadi kesalahan saat login');
+      setError(err.response?.data?.message || 'Username atau password salah');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -64,6 +74,7 @@ function AdminLogin() {
                 placeholder="Username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
+                disabled={isLoading}
               />
             </div>
             <div>
@@ -79,6 +90,7 @@ function AdminLogin() {
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
               />
             </div>
           </div>
@@ -86,9 +98,10 @@ function AdminLogin() {
           <div>
             <button
               type="submit"
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+              disabled={isLoading}
             >
-              Login
+              {isLoading ? 'Logging in...' : 'Login'}
             </button>
           </div>
         </form>
@@ -97,4 +110,4 @@ function AdminLogin() {
   );
 }
 
-export default AdminLogin; 
+export default AdminLogin;

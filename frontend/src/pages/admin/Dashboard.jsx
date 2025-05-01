@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiGrid, FiCalendar, FiUsers, FiMessageSquare, FiSearch } from 'react-icons/fi';
+import { FiGrid, FiCalendar, FiUsers, FiMessageSquare, FiSearch, FiLogOut } from 'react-icons/fi';
+import axios from 'axios';
+import Fields from './Fields';
 
 function AdminDashboard() {
   const navigate = useNavigate();
@@ -8,11 +10,26 @@ function AdminDashboard() {
   const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
 
   useEffect(() => {
-    const token = localStorage.getItem('adminToken');
-    if (!token) {
+    if (!adminUser.id) {
       navigate('/admin');
     }
-  }, [navigate]);
+  }, [navigate, adminUser.id]);
+
+  const handleLogout = async () => {
+    try {
+      // Panggil endpoint logout di backend
+      await axios.post('http://localhost:3000/api/admin/logout', {}, {
+        withCredentials: true
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      // Hapus data admin dari localStorage
+      localStorage.removeItem('adminUser');
+      // Redirect ke halaman login
+      navigate('/');
+    }
+  };
 
   const menuItems = [
     { id: 'dashboard', icon: <FiGrid size={20} />, label: 'Dashboard' },
@@ -76,12 +93,14 @@ function AdminDashboard() {
             </div>
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
-                <img
-                  src="/admin-avatar.png"
-                  alt="Admin"
-                  className="w-8 h-8 rounded-full"
-                />
-                <span className="font-medium">Admin</span>
+                <span className="font-medium">Welcome, {adminUser.username}</span>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center space-x-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg"
+                >
+                  <FiLogOut size={20} />
+                  <span>Logout</span>
+                </button>
               </div>
             </div>
           </div>
@@ -177,11 +196,34 @@ function AdminDashboard() {
               </div>
             </div>
           )}
-          {/* Add other menu content here */}
+          {activeMenu === 'lapangan' && (
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800 mb-6">Manajemen Lapangan</h1>
+              <Fields />
+            </div>
+          )}
+          {activeMenu === 'booking' && (
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800 mb-6">Manajemen Booking</h1>
+              {/* Booking component will be added here */}
+            </div>
+          )}
+          {activeMenu === 'member' && (
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800 mb-6">Manajemen Member</h1>
+              {/* Member component will be added here */}
+            </div>
+          )}
+          {activeMenu === 'kritik' && (
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800 mb-6">Kritik & Saran</h1>
+              {/* Kritik & Saran component will be added here */}
+            </div>
+          )}
         </main>
       </div>
     </div>
   );
 }
 
-export default AdminDashboard; 
+export default AdminDashboard;
