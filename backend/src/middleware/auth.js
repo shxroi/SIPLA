@@ -1,19 +1,37 @@
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = 'your-secret-key'; // Dalam produksi, gunakan environment variable
+const JWT_SECRET = 'your-secret-key'; // Sebaiknya simpan di environment variable
 
-export const verifyToken = (req, res, next) => {
-    const token = req.headers['authorization']?.split(' ')[1];
-
-    if (!token) {
-        return res.status(403).json({ message: "Token tidak ditemukan" });
-    }
-
+export const isAuthenticated = (req, res, next) => {
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        req.user = decoded;
-        next();
-    } catch (err) {
-        return res.status(401).json({ message: "Token tidak valid" });
+        // Get token dari header
+        const authHeader = req.headers.authorization;
+        if (!authHeader) {
+            return res.status(401).json({ message: "Token tidak ditemukan" });
+        }
+
+        if (!authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ message: "Format token tidak valid" });
+        }
+
+        const token = authHeader.split(' ')[1];
+        if (!token) {
+            return res.status(401).json({ message: "Token tidak valid" });
+        }
+
+        try {
+            // Verifikasi token
+            const decoded = jwt.verify(token, JWT_SECRET);
+            req.user = decoded;
+            next();
+        } catch (jwtError) {
+            if (jwtError.name === 'TokenExpiredError') {
+                return res.status(401).json({ message: "Token telah kadaluarsa" });
+            }
+            return res.status(401).json({ message: "Token tidak valid" });
+        }
+    } catch (error) {
+        console.error('Auth error:', error);
+        return res.status(500).json({ message: "Terjadi kesalahan pada server" });
     }
-}; 
+};
