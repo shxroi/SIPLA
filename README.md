@@ -76,7 +76,7 @@ npm run dev
 ```bash
 cd backend
 npm install
-npm run dev
+node index.js
 ```
 
 4. Setup Database
@@ -88,12 +88,12 @@ npm run dev
 
 #### Frontend (.env)
 ```
-VITE_API_URL=http://localhost:5000
+VITE_API_URL=http://localhost:3000
 ```
 
 #### Backend (.env)
 ```
-PORT=5000
+PORT=3000
 DB_HOST=localhost
 DB_USER=root
 DB_PASSWORD=your_password
