@@ -285,16 +285,17 @@ export const getAllBookings = async (req, res) => {
                     ELSE NULL
                 END as event_details
             FROM booking b
-            JOIN lapangan l ON b.lapangan_id = l.id
+            LEFT JOIN lapangan l ON b.lapangan_id = l.id
             ${whereString}
-            ORDER BY b.tanggal DESC, b.jam_mulai
-            LIMIT $${paramCounter++} OFFSET $${paramCounter}
+            ORDER BY b.created_at DESC
+            LIMIT $${paramCounter++} OFFSET $${paramCounter++}
         `;
         
-        params.push(limit, offset);
+        params.push(parseInt(limit), offset);
         
         const result = await pool.query(query, params);
         
+        // Format response
         res.json({
             data: result.rows,
             pagination: {
@@ -499,31 +500,57 @@ export const deleteBooking = async (req, res) => {
 // Get dashboard stats
 export const getDashboardStats = async (req, res) => {
     try {
-        // Booking hari ini
+        // Get total bookings
+        const totalBookingsQuery = `
+            SELECT COUNT(*) as total FROM booking
+        `;
+        const totalBookingsResult = await pool.query(totalBookingsQuery);
+        const totalBookings = parseInt(totalBookingsResult.rows[0].total);
+        
+        // Get total revenue
+        const totalRevenueQuery = `
+            SELECT COALESCE(SUM(total_harga), 0) as total FROM booking
+            WHERE status_pembayaran = 'lunas'
+        `;
+        const totalRevenueResult = await pool.query(totalRevenueQuery);
+        const totalRevenue = parseFloat(totalRevenueResult.rows[0].total);
+        
+        // Get active members
+        const activeMembersQuery = `
+            SELECT COUNT(*) as total FROM member
+            WHERE status = 'aktif'
+        `;
+        const activeMembersResult = await pool.query(activeMembersQuery);
+        const activeMembers = parseInt(activeMembersResult.rows[0]?.total || 0);
+        
+        // Get available fields
+        const availableFieldsQuery = `
+            SELECT COUNT(*) as total FROM lapangan
+            WHERE status = 'tersedia'
+        `;
+        const availableFieldsResult = await pool.query(availableFieldsQuery);
+        const availableFields = parseInt(availableFieldsResult.rows[0]?.total || 0);
+        
+        // Get today's bookings
         const todayBookingsQuery = `
-            SELECT COUNT(*) as count
-            FROM booking
+            SELECT COUNT(*) as count FROM booking
             WHERE tanggal = CURRENT_DATE
-            AND status_booking != 'cancelled'
         `;
         
-        // Booking pending
+        // Get pending bookings
         const pendingBookingsQuery = `
-            SELECT COUNT(*) as count
-            FROM booking
+            SELECT COUNT(*) as count FROM booking
             WHERE status_booking = 'pending'
         `;
         
-        // Total booking minggu ini
+        // Get weekly bookings
         const weeklyBookingsQuery = `
-            SELECT COUNT(*) as count
-            FROM booking
+            SELECT COUNT(*) as count FROM booking
             WHERE tanggal BETWEEN 
                 CURRENT_DATE - INTERVAL '7 days' AND CURRENT_DATE
-            AND status_booking != 'cancelled'
         `;
         
-        // Booking per lapangan
+        // Get bookings by field
         const bookingsByFieldQuery = `
             SELECT 
                 l.nama as lapangan_nama,
@@ -536,27 +563,275 @@ export const getDashboardStats = async (req, res) => {
             GROUP BY l.nama
         `;
         
+        // Get bookings by type
+        const bookingsByTypeQuery = `
+            SELECT 
+                CASE 
+                    WHEN tipe_booking = 'regular' THEN 'regular'
+                    WHEN tipe_booking = 'event' THEN 'event'
+                    ELSE tipe_booking
+                END as name,
+                COUNT(*) as value
+            FROM booking
+            GROUP BY tipe_booking
+        `;
+        
+        // Get revenue by month (last 6 months)
+        const revenueByMonthQuery = `
+            SELECT 
+                TO_CHAR(tanggal, 'Month') as month,
+                EXTRACT(MONTH FROM tanggal) as month_num,
+                EXTRACT(YEAR FROM tanggal) as year,
+                SUM(total_harga) as revenue
+            FROM booking
+            WHERE tanggal >= NOW() - INTERVAL '6 months'
+            AND status_pembayaran = 'lunas'
+            GROUP BY month, month_num, year
+            ORDER BY year, month_num
+        `;
+        
         const [
             todayResult, 
             pendingResult, 
             weeklyResult, 
-            byFieldResult
+            byFieldResult,
+            bookingsByTypeResult,
+            revenueByMonthResult
         ] = await Promise.all([
             pool.query(todayBookingsQuery),
             pool.query(pendingBookingsQuery),
             pool.query(weeklyBookingsQuery),
-            pool.query(bookingsByFieldQuery)
+            pool.query(bookingsByFieldQuery),
+            pool.query(bookingsByTypeQuery),
+            pool.query(revenueByMonthQuery)
         ]);
         
         res.json({
+            totalBookings,
+            totalRevenue,
+            activeMembers,
+            availableFields,
             todayBookings: parseInt(todayResult.rows[0].count),
             pendingBookings: parseInt(pendingResult.rows[0].count),
             weeklyBookings: parseInt(weeklyResult.rows[0].count),
-            bookingsByField: byFieldResult.rows
+            bookingsByField: byFieldResult.rows,
+            bookingsByType: bookingsByTypeResult.rows,
+            revenueByMonth: revenueByMonthResult.rows
         });
     } catch (error) {
         console.error('Error in getDashboardStats:', error);
         res.status(500).json({ message: "Terjadi kesalahan saat mengambil statistik dashboard" });
+    }
+};
+
+// Get booking regular (untuk admin)
+export const getRegularBookings = async (req, res) => {
+    try {
+        const {
+            page = 1,
+            limit = 10,
+            tanggal_mulai,
+            tanggal_akhir,
+            status_booking,
+            status_pembayaran,
+            search,
+            lapangan_id
+        } = req.query;
+        
+        const offset = (page - 1) * limit;
+        let params = [];
+        let whereClause = ['b.tipe_booking = $1'];
+        let paramCounter = 2;
+        
+        params.push('regular');
+        
+        // Build WHERE clause based on filters
+        if (tanggal_mulai) {
+            whereClause.push(`b.tanggal >= $${paramCounter++}`);
+            params.push(tanggal_mulai);
+        }
+        
+        if (tanggal_akhir) {
+            whereClause.push(`b.tanggal <= $${paramCounter++}`);
+            params.push(tanggal_akhir);
+        }
+        
+        if (status_booking) {
+            whereClause.push(`b.status_booking = $${paramCounter++}`);
+            params.push(status_booking);
+        }
+        
+        if (status_pembayaran) {
+            whereClause.push(`b.status_pembayaran = $${paramCounter++}`);
+            params.push(status_pembayaran);
+        }
+        
+        if (lapangan_id) {
+            whereClause.push(`b.lapangan_id = $${paramCounter++}`);
+            params.push(lapangan_id);
+        }
+        
+        if (search) {
+            whereClause.push(`(
+                b.nama_pemesan ILIKE $${paramCounter} OR 
+                b.no_telepon ILIKE $${paramCounter}
+            )`);
+            params.push(`%${search}%`);
+            paramCounter++;
+        }
+        
+        const whereString = 'WHERE ' + whereClause.join(' AND ');
+        
+        // Get total count
+        const countQuery = `
+            SELECT COUNT(*) 
+            FROM booking b
+            ${whereString}
+        `;
+        
+        const countResult = await pool.query(countQuery, params);
+        const totalItems = parseInt(countResult.rows[0].count);
+        const totalPages = Math.ceil(totalItems / limit);
+        
+        // Get bookings
+        const query = `
+            SELECT 
+                b.*,
+                l.nama as lapangan_nama,
+                l.tipe as lapangan_tipe
+            FROM booking b
+            LEFT JOIN lapangan l ON b.lapangan_id = l.id
+            ${whereString}
+            ORDER BY b.created_at DESC
+            LIMIT $${paramCounter++} OFFSET $${paramCounter++}
+        `;
+        
+        params.push(parseInt(limit), offset);
+        
+        const result = await pool.query(query, params);
+        
+        // Format response
+        res.json({
+            data: result.rows,
+            pagination: {
+                totalItems,
+                totalPages,
+                currentPage: parseInt(page),
+                itemsPerPage: parseInt(limit)
+            }
+        });
+    } catch (error) {
+        console.error('Error in getRegularBookings:', error);
+        res.status(500).json({ message: "Terjadi kesalahan saat mengambil data booking regular" });
+    }
+};
+
+// Get booking event (untuk admin)
+export const getEventBookings = async (req, res) => {
+    try {
+        const {
+            page = 1,
+            limit = 10,
+            tanggal_mulai,
+            tanggal_akhir,
+            status_booking,
+            status_pembayaran,
+            search,
+            lapangan_id
+        } = req.query;
+        
+        const offset = (page - 1) * limit;
+        let params = [];
+        let whereClause = ['b.tipe_booking = $1'];
+        let paramCounter = 2;
+        
+        params.push('event');
+        
+        // Build WHERE clause based on filters
+        if (tanggal_mulai) {
+            whereClause.push(`be.tanggal_mulai >= $${paramCounter++}`);
+            params.push(tanggal_mulai);
+        }
+        
+        if (tanggal_akhir) {
+            whereClause.push(`be.tanggal_selesai <= $${paramCounter++}`);
+            params.push(tanggal_akhir);
+        }
+        
+        if (status_booking) {
+            whereClause.push(`b.status_booking = $${paramCounter++}`);
+            params.push(status_booking);
+        }
+        
+        if (status_pembayaran) {
+            whereClause.push(`b.status_pembayaran = $${paramCounter++}`);
+            params.push(status_pembayaran);
+        }
+        
+        if (lapangan_id) {
+            whereClause.push(`b.lapangan_id = $${paramCounter++}`);
+            params.push(lapangan_id);
+        }
+        
+        if (search) {
+            whereClause.push(`(
+                b.nama_pemesan ILIKE $${paramCounter} OR 
+                b.no_telepon ILIKE $${paramCounter} OR
+                be.nama_event ILIKE $${paramCounter}
+            )`);
+            params.push(`%${search}%`);
+            paramCounter++;
+        }
+        
+        const whereString = 'WHERE ' + whereClause.join(' AND ');
+        
+        // Get total count
+        const countQuery = `
+            SELECT COUNT(*) 
+            FROM booking b
+            JOIN booking_event be ON b.id = be.booking_id
+            ${whereString}
+        `;
+        
+        const countResult = await pool.query(countQuery, params);
+        const totalItems = parseInt(countResult.rows[0].count);
+        const totalPages = Math.ceil(totalItems / limit);
+        
+        // Get bookings
+        const query = `
+            SELECT 
+                b.*,
+                l.nama as lapangan_nama,
+                l.tipe as lapangan_tipe,
+                be.nama_event,
+                be.deskripsi as event_deskripsi,
+                be.tanggal_mulai,
+                be.tanggal_selesai
+            FROM booking b
+            LEFT JOIN lapangan l ON b.lapangan_id = l.id
+            JOIN booking_event be ON b.id = be.booking_id
+            ${whereString}
+            ORDER BY b.created_at DESC
+            LIMIT $${paramCounter++} OFFSET $${paramCounter++}
+        `;
+        
+        params.push(parseInt(limit), offset);
+        
+        const result = await pool.query(query, params);
+        
+        // Format response
+        res.json({
+            data: result.rows,
+            pagination: {
+                totalItems,
+                totalPages,
+                currentPage: parseInt(page),
+                itemsPerPage: parseInt(limit)
+            }
+        });
+    } catch (error) {
+        console.error('Error in getEventBookings:', error);
+        res.status(500).json({ message: "Terjadi kesalahan saat mengambil data booking event" });
     }
 };
 
@@ -565,6 +840,8 @@ export default {
     createBooking,
     createEventBooking,
     getAllBookings,
+    getRegularBookings,
+    getEventBookings,
     getBookingById,
     updateBookingStatus,
     deleteBooking,

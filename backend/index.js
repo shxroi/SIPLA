@@ -3,6 +3,8 @@ import cors from 'cors';
 import adminRoutes from './src/routes/adminRoutes.js';
 import lapanganRoutes from './src/routes/lapanganRoutes.js';
 import bookingRoutes from './src/routes/bookingRoutes.js';
+import memberRoutes from './src/routes/memberRoutes.js';
+import dashboardRoutes from './src/routes/dashboardRoutes.js';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import path from 'path';
@@ -41,6 +43,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/admin', adminRoutes);
 app.use('/api/lapangan', lapanganRoutes);
 app.use('/api/booking', bookingRoutes);
+app.use('/api/member', memberRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Test route
 app.get('/api/test', (req, res) => {

@@ -5,6 +5,7 @@ import BookingFilter from '../../components/admin/BookingFilter';
 import BookingList from '../../components/admin/BookingList';
 import BookingDetail from '../../components/admin/BookingDetail';
 import BookingStatusUpdate from '../../components/admin/BookingStatusUpdate';
+import AddBookingForm from '../../components/admin/AddBookingForm';
 import Pagination from '../../components/admin/Pagination';
 
 const Bookings = () => {
@@ -15,6 +16,7 @@ const Bookings = () => {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
   const [filters, setFilters] = useState({
     page: 1,
     limit: 10,
@@ -151,9 +153,22 @@ const Bookings = () => {
     }
   };
 
+  const handleAddSuccess = () => {
+    setShowAddModal(false);
+    fetchBookings();
+  };
+
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Kelola Booking</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Kelola Booking</h1>
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
+        >
+          Tambah Booking
+        </button>
+      </div>
       
       <BookingFilter 
         filters={filters} 
@@ -205,6 +220,13 @@ const Bookings = () => {
           booking={selectedBooking}
           onClose={() => setShowStatusModal(false)}
           onSubmit={(statusData) => handleUpdateStatus(selectedBooking.id, statusData)}
+        />
+      )}
+
+      {showAddModal && (
+        <AddBookingForm
+          onClose={() => setShowAddModal(false)}
+          onSuccess={handleAddSuccess}
         />
       )}
     </div>

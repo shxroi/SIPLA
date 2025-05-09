@@ -22,13 +22,14 @@ export const isAuthenticated = (req, res, next) => {
         try {
             // Verifikasi token
             const decoded = jwt.verify(token, JWT_SECRET);
-            req.user = decoded;
+            req.admin = decoded; // Menggunakan req.admin bukan req.user untuk konsistensi
             next();
         } catch (jwtError) {
+            console.error('JWT Verification Error:', jwtError);
             if (jwtError.name === 'TokenExpiredError') {
                 return res.status(401).json({ message: "Token telah kadaluarsa" });
             }
-            return res.status(401).json({ message: "Token tidak valid" });
+            return res.status(401).json({ message: "Token tidak valid", error: jwtError.message });
         }
     } catch (error) {
         console.error('Auth error:', error);

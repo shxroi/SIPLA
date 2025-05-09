@@ -11,7 +11,11 @@ if (!fs.existsSync(uploadsDir)) {
 // Get semua lapangan dengan waktu sewa
 export const getAllLapangan = async (req, res) => {
     try {
-        const result = await pool.query(`
+        // Get filter parameters
+        const { tipe, nomor_lapangan } = req.query;
+        
+        // Build the query with potential filters
+        let query = `
           SELECT 
             l.*,
             COALESCE(
@@ -20,16 +24,40 @@ export const getAllLapangan = async (req, res) => {
                   'id', w.id,
                   'jam_mulai', w.jam_mulai,
                   'jam_selesai', w.jam_selesai,
-                  'harga', w.harga
+                  'harga', w.harga,
+                  'kategori_waktu', w.kategori_waktu
                 )
               ) FILTER (WHERE w.id IS NOT NULL),
               '[]'::json
             ) as waktu_sewa
           FROM lapangan l
           LEFT JOIN waktu_sewa w ON l.id = w.lapangan_id
+          WHERE 1=1
+        `;
+        
+        const queryParams = [];
+        let paramCounter = 1;
+        
+        // Add filters if they exist
+        if (tipe) {
+            query += ` AND l.tipe = $${paramCounter}`;
+            queryParams.push(tipe);
+            paramCounter++;
+        }
+        
+        if (nomor_lapangan) {
+            query += ` AND l.nomor_lapangan = $${paramCounter}`;
+            queryParams.push(nomor_lapangan);
+            paramCounter++;
+        }
+        
+        // Add group by and order by
+        query += `
           GROUP BY l.id
           ORDER BY l.id
-        `);
+        `;
+        
+        const result = await pool.query(query, queryParams);
         
         // Transform foto_url
         const lapangan = result.rows.map(lap => ({
@@ -118,11 +146,11 @@ export const createLapangan = async (req, res) => {
         // Insert waktu_sewa
         if (waktu_sewa && waktu_sewa.length > 0) {
             const waktuSewaValues = waktu_sewa.map(ws => 
-                `(${lapanganId}, '${ws.jam_mulai}', '${ws.jam_selesai}', ${ws.harga})`
+                `(${lapanganId}, '${ws.jam_mulai}', '${ws.jam_selesai}', ${ws.harga}, '${ws.kategori_waktu || ''}')`
             ).join(',');
 
             await client.query(`
-                INSERT INTO waktu_sewa (lapangan_id, jam_mulai, jam_selesai, harga)
+                INSERT INTO waktu_sewa (lapangan_id, jam_mulai, jam_selesai, harga, kategori_waktu)
                 VALUES ${waktuSewaValues}
             `);
         }
@@ -179,11 +207,11 @@ export const updateLapangan = async (req, res) => {
         // Insert new waktu_sewa
         if (waktu_sewa && waktu_sewa.length > 0) {
             const waktuSewaValues = waktu_sewa.map(ws => 
-                `(${id}, '${ws.jam_mulai}', '${ws.jam_selesai}', ${ws.harga})`
+                `(${id}, '${ws.jam_mulai}', '${ws.jam_selesai}', ${ws.harga}, '${ws.kategori_waktu || ''}')`
             ).join(',');
 
             await client.query(`
-                INSERT INTO waktu_sewa (lapangan_id, jam_mulai, jam_selesai, harga)
+                INSERT INTO waktu_sewa (lapangan_id, jam_mulai, jam_selesai, harga, kategori_waktu)
                 VALUES ${waktuSewaValues}
             `);
         }

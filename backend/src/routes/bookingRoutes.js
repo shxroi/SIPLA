@@ -11,6 +11,8 @@ router.post('/event/create', bookingController.createEventBooking);
 
 // Admin endpoints (perlu autentikasi)
 router.get('/admin', isAuthenticated, bookingController.getAllBookings);
+router.get('/admin/regular', isAuthenticated, bookingController.getRegularBookings);
+router.get('/admin/event', isAuthenticated, bookingController.getEventBookings);
 router.get('/admin/:id', isAuthenticated, bookingController.getBookingById);
 router.put('/admin/:id/status', isAuthenticated, bookingController.updateBookingStatus);
 router.delete('/admin/:id', isAuthenticated, bookingController.deleteBooking);

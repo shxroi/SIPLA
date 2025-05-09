@@ -4,6 +4,12 @@ import { FiGrid, FiCalendar, FiUsers, FiMessageSquare, FiSearch, FiLogOut } from
 import axios from 'axios';
 import Fields from './Fields';
 import Bookings from './Bookings';
+import BookingRegular from './BookingRegular';
+import BookingEvent from './BookingEvent';
+import FutsalFields from '../../components/admin/FutsalFields';
+import BadmintonFields from '../../components/admin/BadmintonFields';
+import BadmintonMembers from '../../components/admin/BadmintonMembers';
+import DashboardStats from '../../components/admin/DashboardStats';
 
 function AdminDashboard() {
   const navigate = useNavigate();
@@ -60,9 +66,35 @@ function AdminDashboard() {
 
   const menuItems = [
     { id: 'dashboard', icon: <FiGrid size={20} />, label: 'Dashboard', path: '/admin/dashboard' },
-    { id: 'booking', icon: <FiCalendar size={20} />, label: 'Booking', path: '/admin/dashboard/booking' },
-    { id: 'lapangan', icon: <FiGrid size={20} />, label: 'Lapangan', path: '/admin/dashboard/lapangan' },
-    { id: 'member', icon: <FiUsers size={20} />, label: 'Member', path: '/admin/dashboard/member' },
+    { 
+      id: 'booking', 
+      icon: <FiCalendar size={20} />, 
+      label: 'Booking', 
+      path: '/admin/dashboard/booking',
+      submenu: [
+        { id: 'booking-regular', label: 'Booking Reguler', path: '/admin/dashboard/booking/regular' },
+        { id: 'booking-event', label: 'Booking Event', path: '/admin/dashboard/booking/event' }
+      ]
+    },
+    { 
+      id: 'lapangan', 
+      icon: <FiGrid size={20} />, 
+      label: 'Lapangan', 
+      path: '/admin/dashboard/lapangan',
+      submenu: [
+        { id: 'lapangan-futsal', label: 'Lapangan Futsal', path: '/admin/dashboard/lapangan/futsal' },
+        { id: 'lapangan-badminton', label: 'Lapangan Bulutangkis', path: '/admin/dashboard/lapangan/badminton' }
+      ]
+    },
+    { 
+      id: 'member', 
+      icon: <FiUsers size={20} />, 
+      label: 'Member', 
+      path: '/admin/dashboard/member',
+      submenu: [
+        { id: 'member-badminton', label: 'Member Bulutangkis', path: '/admin/dashboard/member/badminton' }
+      ]
+    },
     { id: 'kritik', icon: <FiMessageSquare size={20} />, label: 'Kritik & Saran', path: '/admin/dashboard/kritik' },
   ];
 
@@ -109,16 +141,68 @@ function AdminDashboard() {
         </div>
         <nav className="mt-8">
           {menuItems.map((item) => (
-            <Link
-              key={item.id}
-              to={item.path}
-              className={`w-full flex items-center space-x-2 px-6 py-3 ${
-                activeMenu === item.id ? 'bg-blue-50 text-blue-600 border-r-4 border-blue-600' : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              {item.icon}
-              <span>{item.label}</span>
-            </Link>
+            <div key={item.id}>
+              <Link
+                to={item.path}
+                className={`w-full flex items-center justify-between px-6 py-3 ${
+                  activeMenu === item.id || (activeMenu && activeMenu.startsWith(item.id + '-')) 
+                    ? 'bg-blue-50 text-blue-600 border-r-4 border-blue-600' 
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+                onClick={() => item.submenu && setActiveMenu(item.id)}
+              >
+                <div className="flex items-center space-x-2">
+                  {item.icon}
+                  <span>{item.label}</span>
+                </div>
+                {item.submenu && (
+                  <svg
+                    className={`w-4 h-4 transition-transform ${
+                      activeMenu === item.id || (activeMenu && activeMenu.startsWith(item.id + '-'))
+                        ? 'transform rotate-90'
+                        : ''
+                    }`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M9 5l7 7-7 7"
+                    ></path>
+                  </svg>
+                )}
+              </Link>
+              
+              {/* Submenu */}
+              {item.submenu && (
+                <div
+                  className={`transition-all duration-300 overflow-hidden ${
+                    activeMenu === item.id || (activeMenu && activeMenu.startsWith(item.id + '-'))
+                      ? 'max-h-40'
+                      : 'max-h-0'
+                  }`}
+                >
+                  {item.submenu.map((subItem) => (
+                    <Link
+                      key={subItem.id}
+                      to={subItem.path}
+                      className={`w-full flex items-center pl-12 pr-6 py-2 ${
+                        activeMenu === subItem.id
+                          ? 'text-blue-600 bg-blue-50'
+                          : 'text-gray-600 hover:bg-gray-50'
+                      }`}
+                      onClick={() => setActiveMenu(subItem.id)}
+                    >
+                      <span>{subItem.label}</span>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
           ))}
         </nav>
       </div>
@@ -154,111 +238,28 @@ function AdminDashboard() {
         {/* Dashboard Content */}
         <main className="p-8">
           <Routes>
-            <Route path="/" element={
-              <div className="space-y-6">
-                <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
-                
-                {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="bg-white p-6 rounded-lg shadow-sm">
-                    <h2 className="text-lg font-medium text-gray-500">Total Booking</h2>
-                    <p className="text-3xl font-bold text-blue-600 mt-2">24</p>
-                  </div>
-                  
-                  <div className="bg-white p-6 rounded-lg shadow-sm">
-                    <h2 className="text-lg font-medium text-gray-500">Pendapatan</h2>
-                    <p className="text-3xl font-bold text-green-600 mt-2">Rp 3.600.000</p>
-                  </div>
-                  
-                  <div className="bg-white p-6 rounded-lg shadow-sm">
-                    <h2 className="text-lg font-medium text-gray-500">Member Aktif</h2>
-                    <p className="text-3xl font-bold text-purple-600 mt-2">8</p>
-                  </div>
-                </div>
-                
-                {/* Recent Bookings */}
-                <div className="bg-white p-6 rounded-lg shadow-sm">
-                  <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-lg font-medium text-gray-800">Booking Terbaru</h2>
-                    <Link to="/admin/dashboard/booking" className="text-blue-600 hover:text-blue-800">
-                      Lihat Semua
-                    </Link>
-                  </div>
-                  
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            ID
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Lapangan
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Pemesan
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Tanggal
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Jam
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Status
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Aksi
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {bookings.map((booking) => (
-                          <tr key={booking.id}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              #{booking.id}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {booking.fieldName}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {booking.customerName}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {booking.date}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {booking.time}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                {booking.status}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              <button className="text-blue-600 hover:text-blue-900 mr-3">
-                                Edit
-                              </button>
-                              <button className="text-red-600 hover:text-red-900">
-                                Hapus
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            } />
+            <Route path="/" element={<DashboardStats />} />
+            
+            {/* Booking Routes */}
             <Route path="/booking" element={<Bookings />} />
+            <Route path="/booking/regular" element={<BookingRegular />} />
+            <Route path="/booking/event" element={<BookingEvent />} />
+            
+            {/* Lapangan Routes */}
             <Route path="/lapangan" element={<Fields />} />
+            <Route path="/lapangan/futsal" element={<FutsalFields />} />
+            <Route path="/lapangan/badminton" element={<BadmintonFields />} />
+            
+            {/* Member Routes */}
             <Route path="/member" element={
               <div>
                 <h1 className="text-2xl font-bold text-gray-800 mb-6">Manajemen Member</h1>
                 {/* Member component will be added here */}
               </div>
             } />
+            <Route path="/member/badminton" element={<BadmintonMembers />} />
+            
+            {/* Kritik & Saran Route */}
             <Route path="/kritik" element={
               <div>
                 <h1 className="text-2xl font-bold text-gray-800 mb-6">Kritik & Saran</h1>
