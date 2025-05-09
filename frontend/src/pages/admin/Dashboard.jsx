@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { FiGrid, FiCalendar, FiUsers, FiMessageSquare, FiSearch, FiLogOut } from 'react-icons/fi';
 import axios from 'axios';
 import Fields from './Fields';
+import Bookings from './Bookings';
 
 function AdminDashboard() {
   const navigate = useNavigate();
@@ -12,8 +13,34 @@ function AdminDashboard() {
   useEffect(() => {
     if (!adminUser.id) {
       navigate('/admin');
+      return;
     }
-  }, [navigate, adminUser.id]);
+    
+    // Cek token validity
+    const checkAuth = async () => {
+      try {
+        const response = await axios.get('http://localhost:3000/api/admin/check-auth', {
+          headers: {
+            'Authorization': `Bearer ${adminUser.token}`
+          }
+        });
+        
+        if (!response.data.valid) {
+          localStorage.removeItem('adminUser');
+          navigate('/admin');
+        }
+      } catch (error) {
+        console.error('Auth check error:', error);
+        // Jangan logout jika hanya network error
+        if (error.response && error.response.status === 401) {
+          localStorage.removeItem('adminUser');
+          navigate('/admin');
+        }
+      }
+    };
+    
+    checkAuth();
+  }, [navigate, adminUser.id, adminUser.token]);
 
   const handleLogout = async () => {
     try {
@@ -32,12 +59,30 @@ function AdminDashboard() {
   };
 
   const menuItems = [
-    { id: 'dashboard', icon: <FiGrid size={20} />, label: 'Dashboard' },
-    { id: 'booking', icon: <FiCalendar size={20} />, label: 'Booking' },
-    { id: 'lapangan', icon: <FiGrid size={20} />, label: 'Lapangan' },
-    { id: 'member', icon: <FiUsers size={20} />, label: 'Member' },
-    { id: 'kritik', icon: <FiMessageSquare size={20} />, label: 'Kritik & Saran' },
+    { id: 'dashboard', icon: <FiGrid size={20} />, label: 'Dashboard', path: '/admin/dashboard' },
+    { id: 'booking', icon: <FiCalendar size={20} />, label: 'Booking', path: '/admin/dashboard/booking' },
+    { id: 'lapangan', icon: <FiGrid size={20} />, label: 'Lapangan', path: '/admin/dashboard/lapangan' },
+    { id: 'member', icon: <FiUsers size={20} />, label: 'Member', path: '/admin/dashboard/member' },
+    { id: 'kritik', icon: <FiMessageSquare size={20} />, label: 'Kritik & Saran', path: '/admin/dashboard/kritik' },
   ];
+
+  const location = useLocation();
+  
+  // Set active menu based on current path
+  useEffect(() => {
+    const path = location.pathname;
+    if (path === '/admin/dashboard') {
+      setActiveMenu('dashboard');
+    } else if (path.includes('/booking')) {
+      setActiveMenu('booking');
+    } else if (path.includes('/lapangan')) {
+      setActiveMenu('lapangan');
+    } else if (path.includes('/member')) {
+      setActiveMenu('member');
+    } else if (path.includes('/kritik')) {
+      setActiveMenu('kritik');
+    }
+  }, [location.pathname]);
 
   const bookings = [
     {
@@ -64,16 +109,16 @@ function AdminDashboard() {
         </div>
         <nav className="mt-8">
           {menuItems.map((item) => (
-            <button
+            <Link
               key={item.id}
-              onClick={() => setActiveMenu(item.id)}
+              to={item.path}
               className={`w-full flex items-center space-x-2 px-6 py-3 ${
                 activeMenu === item.id ? 'bg-blue-50 text-blue-600 border-r-4 border-blue-600' : 'text-gray-600 hover:bg-gray-50'
               }`}
             >
               {item.icon}
               <span>{item.label}</span>
-            </button>
+            </Link>
           ))}
         </nav>
       </div>
@@ -108,118 +153,119 @@ function AdminDashboard() {
 
         {/* Dashboard Content */}
         <main className="p-8">
-          {activeMenu === 'dashboard' && (
-            <div className="space-y-6">
-              <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-white p-6 rounded-lg shadow-md">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-2">Total Booking</h3>
-                  <p className="text-3xl font-bold text-blue-600">24</p>
+          <Routes>
+            <Route path="/" element={
+              <div className="space-y-6">
+                <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
+                
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="bg-white p-6 rounded-lg shadow-sm">
+                    <h2 className="text-lg font-medium text-gray-500">Total Booking</h2>
+                    <p className="text-3xl font-bold text-blue-600 mt-2">24</p>
+                  </div>
+                  
+                  <div className="bg-white p-6 rounded-lg shadow-sm">
+                    <h2 className="text-lg font-medium text-gray-500">Pendapatan</h2>
+                    <p className="text-3xl font-bold text-green-600 mt-2">Rp 3.600.000</p>
+                  </div>
+                  
+                  <div className="bg-white p-6 rounded-lg shadow-sm">
+                    <h2 className="text-lg font-medium text-gray-500">Member Aktif</h2>
+                    <p className="text-3xl font-bold text-purple-600 mt-2">8</p>
+                  </div>
                 </div>
-                <div className="bg-white p-6 rounded-lg shadow-md">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-2">Pendapatan</h3>
-                  <p className="text-3xl font-bold text-green-600">Rp 3.600.000</p>
-                </div>
-                <div className="bg-white p-6 rounded-lg shadow-md">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-2">Member Aktif</h3>
-                  <p className="text-3xl font-bold text-purple-600">8</p>
-                </div>
-              </div>
-
-              <div className="bg-white shadow-md rounded-lg overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h2 className="text-xl font-semibold text-gray-800">Booking Terbaru</h2>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          ID
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Lapangan
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Pemesan
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Tanggal
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Jam
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Aksi
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {bookings.map((booking) => (
-                        <tr key={booking.id}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            #{booking.id}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {booking.fieldName}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {booking.customerName}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {booking.date}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {booking.time}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                              {booking.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button className="text-blue-600 hover:text-blue-900 mr-3">
-                              Edit
-                            </button>
-                            <button className="text-red-600 hover:text-red-900">
-                              Hapus
-                            </button>
-                          </td>
+                
+                {/* Recent Bookings */}
+                <div className="bg-white p-6 rounded-lg shadow-sm">
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-lg font-medium text-gray-800">Booking Terbaru</h2>
+                    <Link to="/admin/dashboard/booking" className="text-blue-600 hover:text-blue-800">
+                      Lihat Semua
+                    </Link>
+                  </div>
+                  
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            ID
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Lapangan
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Pemesan
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Tanggal
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Jam
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Status
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Aksi
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {bookings.map((booking) => (
+                          <tr key={booking.id}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              #{booking.id}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {booking.fieldName}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {booking.customerName}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {booking.date}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {booking.time}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                {booking.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              <button className="text-blue-600 hover:text-blue-900 mr-3">
+                                Edit
+                              </button>
+                              <button className="text-red-600 hover:text-red-900">
+                                Hapus
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-          {activeMenu === 'lapangan' && (
-            <div>
-              <h1 className="text-2xl font-bold text-gray-800 mb-6">Manajemen Lapangan</h1>
-              <Fields />
-            </div>
-          )}
-          {activeMenu === 'booking' && (
-            <div>
-              <h1 className="text-2xl font-bold text-gray-800 mb-6">Manajemen Booking</h1>
-              {/* Booking component will be added here */}
-            </div>
-          )}
-          {activeMenu === 'member' && (
-            <div>
-              <h1 className="text-2xl font-bold text-gray-800 mb-6">Manajemen Member</h1>
-              {/* Member component will be added here */}
-            </div>
-          )}
-          {activeMenu === 'kritik' && (
-            <div>
-              <h1 className="text-2xl font-bold text-gray-800 mb-6">Kritik & Saran</h1>
-              {/* Kritik & Saran component will be added here */}
-            </div>
-          )}
+            } />
+            <Route path="/booking" element={<Bookings />} />
+            <Route path="/lapangan" element={<Fields />} />
+            <Route path="/member" element={
+              <div>
+                <h1 className="text-2xl font-bold text-gray-800 mb-6">Manajemen Member</h1>
+                {/* Member component will be added here */}
+              </div>
+            } />
+            <Route path="/kritik" element={
+              <div>
+                <h1 className="text-2xl font-bold text-gray-800 mb-6">Kritik & Saran</h1>
+                {/* Kritik & Saran component will be added here */}
+              </div>
+            } />
+          </Routes>
         </main>
       </div>
     </div>
