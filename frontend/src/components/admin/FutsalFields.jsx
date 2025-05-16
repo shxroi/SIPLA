@@ -130,17 +130,36 @@ const FutsalFields = () => {
     try {
       const { token } = JSON.parse(localStorage.getItem('adminUser') || '{}');
       
+      // Pastikan nomor_lapangan adalah angka
+      const nomorLapangan = parseInt(formData.nomor_lapangan) || 1;
+      
       // Create FormData object for file upload
       const formDataObj = new FormData();
       formDataObj.append('nama', formData.nama);
-      formDataObj.append('nomor_lapangan', formData.nomor_lapangan);
+      formDataObj.append('nomor_lapangan', nomorLapangan);
       formDataObj.append('tipe', formData.tipe);
       formDataObj.append('status', formData.status);
-      formDataObj.append('waktu_sewa', JSON.stringify(formData.waktu_sewa));
+      formDataObj.append('jenis_lapangan', 'futsal'); // Tambahkan jenis_lapangan
       
-      if (selectedImage) {
+      // Pastikan waktu_sewa memiliki harga dalam format angka dan semua properti yang diperlukan
+      const waktuSewa = formData.waktu_sewa.map(ws => ({
+        kategori_waktu: ws.kategori_waktu || '',
+        jam_mulai: ws.jam_mulai || '00:00',
+        jam_selesai: ws.jam_selesai || '23:59',
+        harga: parseInt(ws.harga) || 0
+      }));
+      
+      // Stringify waktu_sewa dengan benar
+      const waktuSewaString = JSON.stringify(waktuSewa);
+      console.log('Stringified waktu_sewa:', waktuSewaString);
+      formDataObj.append('waktu_sewa', waktuSewaString);
+      
+      // Hanya tambahkan foto jika ada file baru yang dipilih
+      if (selectedImage instanceof File) {
         formDataObj.append('foto', selectedImage);
       }
+      
+      console.log('Sending data to server:', Object.fromEntries(formDataObj));
       
       if (editingId) {
         // Update existing field
@@ -169,7 +188,7 @@ const FutsalFields = () => {
       
     } catch (error) {
       console.error('Error saving field:', error);
-      alert('Terjadi kesalahan saat menyimpan data lapangan.');
+      alert('Terjadi kesalahan saat menyimpan data lapangan: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -208,7 +227,7 @@ const FutsalFields = () => {
       tipe: 'futsal',
       status: field.status || 'tersedia',
       foto_url: field.foto_lapangan || '',
-      waktu_sewa
+      waktu_sewa: waktuSewa
     });
     
     if (field.foto_lapangan) {

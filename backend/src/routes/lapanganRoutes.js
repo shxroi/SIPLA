@@ -11,7 +11,11 @@ import { upload } from '../middleware/upload.js';
 
 const router = express.Router();
 
-// Routes
+// Public routes (tanpa autentikasi)
+router.get('/public', getAllLapangan);
+router.get('/public/:id', getLapanganById);
+
+// Protected routes (memerlukan autentikasi)
 router.get('/', isAuthenticated, getAllLapangan);
 router.get('/:id', isAuthenticated, getLapanganById);
 router.post('/', isAuthenticated, upload.single('foto_lapangan'), createLapangan);

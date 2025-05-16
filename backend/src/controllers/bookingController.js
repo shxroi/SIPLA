@@ -835,6 +835,96 @@ export const getEventBookings = async (req, res) => {
     }
 };
 
+// Update booking (lengkap)
+export const updateBooking = async (req, res) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        
+        const { id } = req.params;
+        const { 
+            nama_pemesan, 
+            no_telepon, 
+            tanggal, 
+            jam_mulai, 
+            jam_selesai,
+            total_harga,
+            catatan,
+            status_booking,
+            status_pembayaran,
+            lapangan_id
+        } = req.body;
+        
+        // Cek apakah booking ada
+        const checkBooking = await client.query('SELECT * FROM booking WHERE id = $1', [id]);
+        
+        if (checkBooking.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: "Booking tidak ditemukan" });
+        }
+        
+        // Update booking
+        const updateQuery = `
+            UPDATE booking
+            SET 
+                nama_pemesan = COALESCE($1, nama_pemesan),
+                no_telepon = COALESCE($2, no_telepon),
+                tanggal = COALESCE($3, tanggal),
+                jam_mulai = COALESCE($4, jam_mulai),
+                jam_selesai = COALESCE($5, jam_selesai),
+                total_harga = COALESCE($6, total_harga),
+                catatan = COALESCE($7, catatan),
+                status_booking = COALESCE($8, status_booking),
+                status_pembayaran = COALESCE($9, status_pembayaran),
+                lapangan_id = COALESCE($10, lapangan_id),
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $11
+            RETURNING *
+        `;
+        
+        const updateResult = await client.query(updateQuery, [
+            nama_pemesan, 
+            no_telepon, 
+            tanggal, 
+            jam_mulai, 
+            jam_selesai,
+            total_harga,
+            catatan,
+            status_booking,
+            status_pembayaran,
+            lapangan_id,
+            id
+        ]);
+        
+        // Tambahkan log perubahan
+        if (req.admin && req.admin.id) {
+            await client.query(`
+                INSERT INTO booking_history (
+                    booking_id, status_lama, status_baru, catatan, admin_id
+                ) VALUES ($1, $2, $3, $4, $5)
+            `, [
+                id, 
+                'update', 
+                'update', 
+                'Booking diperbarui', 
+                req.admin.id
+            ]);
+        }
+        
+        await client.query('COMMIT');
+        res.json({ 
+            message: "Booking berhasil diupdate", 
+            booking: updateResult.rows[0] 
+        });
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error in updateBooking:', error);
+        res.status(500).json({ message: "Terjadi kesalahan saat mengupdate booking" });
+    } finally {
+        client.release();
+    }
+};
+
 export default {
     checkAvailability,
     createBooking,
@@ -843,6 +933,7 @@ export default {
     getRegularBookings,
     getEventBookings,
     getBookingById,
+    updateBooking,
     updateBookingStatus,
     deleteBooking,
     getDashboardStats

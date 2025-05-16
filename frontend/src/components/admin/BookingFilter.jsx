@@ -16,8 +16,10 @@ const BookingFilter = ({ filters, onFilterChange }) => {
   useEffect(() => {
     const fetchLapangan = async () => {
       try {
-        const response = await axios.get('http://localhost:3000/api/lapangan');
-        setLapangan(response.data);
+        // Menggunakan endpoint public yang tidak memerlukan autentikasi
+        const response = await axios.get('http://localhost:3000/api/lapangan/public');
+        
+        setLapangan(Array.isArray(response.data) ? response.data : []);
       } catch (error) {
         console.error('Error fetching lapangan:', error);
       }

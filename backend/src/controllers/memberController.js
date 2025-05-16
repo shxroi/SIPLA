@@ -19,18 +19,18 @@ export const getAllMembers = async (req, res) => {
         
         // Filter berdasarkan status
         if (status) {
-            whereClause.push(`status = $${paramCounter++}`);
+            whereClause.push(`m.status = $${paramCounter++}`);
             params.push(status);
         } else {
             // Default menampilkan member aktif
-            whereClause.push(`status = 'aktif'`);
+            whereClause.push(`m.status = 'aktif'`);
         }
         
         // Filter berdasarkan search
         if (search) {
             whereClause.push(`(
-                nama ILIKE $${paramCounter} OR 
-                no_telepon ILIKE $${paramCounter}
+                m.nama ILIKE $${paramCounter} OR 
+                m.no_telepon ILIKE $${paramCounter}
             )`);
             params.push(`%${search}%`);
             paramCounter++;
@@ -43,7 +43,8 @@ export const getAllMembers = async (req, res) => {
         // Get total count
         const countQuery = `
             SELECT COUNT(*) 
-            FROM member
+            FROM member m
+            LEFT JOIN lapangan l ON m.lapangan_id = l.id
             ${whereString}
         `;
         
@@ -107,27 +108,54 @@ export const getMemberById = async (req, res) => {
 // Create member baru
 export const createMember = async (req, res) => {
     try {
+        console.log('Create member request body:', req.body);
+        
         const { 
             nama, 
             no_telepon, 
             email, 
             tanggal_mulai, 
             tanggal_selesai,
-            biaya_pendaftaran
+            biaya_pendaftaran,
+            lapangan_id,
+            tipe = 'bulutangkis',
+            status = 'aktif'
         } = req.body;
+        
+        // Validasi data wajib
+        if (!nama || !no_telepon) {
+            return res.status(400).json({ message: "Nama dan nomor telepon wajib diisi" });
+        }
+        
+        // Pastikan biaya pendaftaran adalah angka
+        const biaya = parseInt(biaya_pendaftaran) || 0;
+        
+        // Pastikan lapangan_id adalah angka jika ada
+        const fieldId = lapangan_id ? parseInt(lapangan_id) : null;
         
         // Insert member
         const query = `
             INSERT INTO member (
                 nama, no_telepon, email, tanggal_mulai, tanggal_selesai, 
-                biaya_pendaftaran, tipe, status
-            ) VALUES ($1, $2, $3, $4, $5, $6, 'bulutangkis', 'aktif')
+                biaya_pendaftaran, tipe, status, lapangan_id
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             RETURNING id
         `;
         
-        const result = await pool.query(query, [
-            nama, no_telepon, email, tanggal_mulai, tanggal_selesai, biaya_pendaftaran
-        ]);
+        const params = [
+            nama, 
+            no_telepon, 
+            email || null, 
+            tanggal_mulai, 
+            tanggal_selesai, 
+            biaya, 
+            tipe, 
+            status,
+            fieldId
+        ];
+        
+        console.log('Inserting member with params:', params);
+        const result = await pool.query(query, params);
         
         res.status(201).json({ 
             message: "Member berhasil ditambahkan", 
@@ -135,13 +163,15 @@ export const createMember = async (req, res) => {
         });
     } catch (error) {
         console.error('Error in createMember:', error);
-        res.status(500).json({ message: "Terjadi kesalahan saat menambahkan member" });
+        res.status(500).json({ message: `Terjadi kesalahan saat menambahkan member: ${error.message}` });
     }
 };
 
 // Update member
 export const updateMember = async (req, res) => {
     try {
+        console.log('Update member request body:', req.body);
+        
         const { id } = req.params;
         const { 
             nama, 
@@ -150,8 +180,21 @@ export const updateMember = async (req, res) => {
             tanggal_mulai, 
             tanggal_selesai,
             biaya_pendaftaran,
+            lapangan_id,
+            tipe,
             status
         } = req.body;
+        
+        // Validasi ID
+        if (!id || isNaN(parseInt(id))) {
+            return res.status(400).json({ message: "ID member tidak valid" });
+        }
+        
+        // Pastikan biaya pendaftaran adalah angka jika ada
+        const biaya = biaya_pendaftaran ? parseInt(biaya_pendaftaran) : null;
+        
+        // Pastikan lapangan_id adalah angka jika ada
+        const fieldId = lapangan_id ? parseInt(lapangan_id) : null;
         
         // Update member
         const query = `

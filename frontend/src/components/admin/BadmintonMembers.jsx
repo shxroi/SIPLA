@@ -11,10 +11,11 @@ const BadmintonMembers = () => {
   const [formData, setFormData] = useState({
     nama: '',
     no_telepon: '',
+    email: '',
     lapangan_id: '',
     tanggal_mulai: '',
-    tanggal_berakhir: '',
-    jam_sewa: '',
+    tanggal_selesai: '',
+    biaya_pendaftaran: 0,
     status: 'aktif'
   });
 
@@ -46,14 +47,19 @@ const BadmintonMembers = () => {
     try {
       const { token } = JSON.parse(localStorage.getItem('adminUser') || '{}');
       
-      const response = await axios.get('http://localhost:3000/api/lapangan', {
-        params: { tipe: 'bulutangkis' },
-        headers: { 'Authorization': `Bearer ${token}` }
+      // Menggunakan endpoint public yang tidak memerlukan autentikasi
+      const response = await axios.get('http://localhost:3000/api/lapangan/public', {
+        params: { tipe: 'bulutangkis' }
       });
       
       // Mengakses data dari respons API dengan format yang benar
-      if (response.data && response.data.data) {
-        setLapangan(response.data.data);
+      if (response.data) {
+        // Filter hanya lapangan dengan tipe bulutangkis
+        const bulutangkisFields = Array.isArray(response.data) 
+          ? response.data.filter(field => field.tipe === 'bulutangkis')
+          : [];
+        setLapangan(bulutangkisFields);
+        console.log('Lapangan bulutangkis:', bulutangkisFields);
       } else {
         setLapangan([]);
       }
@@ -81,10 +87,11 @@ const BadmintonMembers = () => {
     setFormData({
       nama: '',
       no_telepon: '',
+      email: '',
       lapangan_id: '',
       tanggal_mulai: '',
-      tanggal_berakhir: '',
-      jam_sewa: '',
+      tanggal_selesai: '',
+      biaya_pendaftaran: 0,
       status: 'aktif'
     });
     setEditingId(null);
@@ -97,16 +104,26 @@ const BadmintonMembers = () => {
     try {
       const { token } = JSON.parse(localStorage.getItem('adminUser') || '{}');
       
+      // Pastikan format data sesuai dengan yang diharapkan API
+      const memberData = {
+        ...formData,
+        biaya_pendaftaran: parseInt(formData.biaya_pendaftaran),
+        lapangan_id: formData.lapangan_id ? parseInt(formData.lapangan_id) : null,
+        tipe: 'bulutangkis' // Pastikan tipe diisi
+      };
+      
+      console.log('Sending member data:', memberData);
+      
       if (editingId) {
         // Update existing member
-        await axios.put(`http://localhost:3000/api/member/${editingId}`, formData, {
+        await axios.put(`http://localhost:3000/api/member/${editingId}`, memberData, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         });
       } else {
         // Create new member
-        await axios.post('http://localhost:3000/api/member', formData, {
+        await axios.post('http://localhost:3000/api/member', memberData, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -122,7 +139,7 @@ const BadmintonMembers = () => {
       
     } catch (error) {
       console.error('Error saving member:', error);
-      alert('Terjadi kesalahan saat menyimpan data member.');
+      alert('Terjadi kesalahan saat menyimpan data member: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -133,10 +150,11 @@ const BadmintonMembers = () => {
     setFormData({
       nama: member.nama,
       no_telepon: member.no_telepon,
+      email: member.email || '',
       lapangan_id: member.lapangan_id,
       tanggal_mulai: member.tanggal_mulai,
-      tanggal_berakhir: member.tanggal_berakhir,
-      jam_sewa: member.jam_sewa,
+      tanggal_selesai: member.tanggal_selesai || member.tanggal_berakhir,
+      biaya_pendaftaran: member.biaya_pendaftaran || 0,
       status: member.status || 'aktif'
     });
     
@@ -173,7 +191,7 @@ const BadmintonMembers = () => {
       const { token } = JSON.parse(localStorage.getItem('adminUser') || '{}');
       
       // Hitung tanggal berakhir baru (1 bulan dari tanggal berakhir saat ini)
-      const currentEndDate = new Date(member.tanggal_berakhir);
+      const currentEndDate = new Date(member.tanggal_selesai || member.tanggal_berakhir);
       const newEndDate = new Date(currentEndDate);
       newEndDate.setMonth(newEndDate.getMonth() + 1);
       
@@ -182,7 +200,7 @@ const BadmintonMembers = () => {
       // Update member dengan tanggal berakhir baru
       await axios.put(`http://localhost:3000/api/member/${member.id}`, {
         ...member,
-        tanggal_berakhir: formattedNewEndDate
+        tanggal_selesai: formattedNewEndDate
       }, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -317,24 +335,35 @@ const BadmintonMembers = () => {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Berakhir</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input 
+                  type="email" 
+                  name="email"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Selesai</label>
                 <input 
                   type="date" 
-                  name="tanggal_berakhir"
+                  name="tanggal_selesai"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  value={formData.tanggal_berakhir}
+                  value={formData.tanggal_selesai}
                   onChange={handleInputChange}
                   required
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Jam Sewa</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Biaya Pendaftaran</label>
                 <input 
-                  type="time" 
-                  name="jam_sewa"
+                  type="number" 
+                  name="biaya_pendaftaran"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  value={formData.jam_sewa}
+                  value={formData.biaya_pendaftaran}
                   onChange={handleInputChange}
                   required
                 />
@@ -377,8 +406,8 @@ const BadmintonMembers = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No. Telepon</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lapangan</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal Mulai</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal Berakhir</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jam Sewa</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal Selesai</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
               </tr>
@@ -397,8 +426,8 @@ const BadmintonMembers = () => {
                     <td className="px-6 py-4 whitespace-nowrap">{member.no_telepon}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{getLapanganName(member.lapangan_id)}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{formatDate(member.tanggal_mulai)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{formatDate(member.tanggal_berakhir)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{member.jam_sewa}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{formatDate(member.tanggal_selesai || member.tanggal_berakhir)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{member.email || '-'}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
                         ${member.status === 'aktif' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>

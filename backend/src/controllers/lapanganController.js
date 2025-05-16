@@ -120,7 +120,18 @@ export const createLapangan = async (req, res) => {
     try {
         await client.query('BEGIN');
         
+        console.log('Request body:', req.body);
+        console.log('Request file:', req.file);
+        
         const { nama, tipe, status } = req.body;
+        const nomor_lapangan = req.body.nomor_lapangan ? parseInt(req.body.nomor_lapangan) : 1;
+        const jenis_lapangan = req.body.jenis_lapangan || tipe;
+        
+        // Validasi data wajib
+        if (!nama || !tipe || !status) {
+            return res.status(400).json({ message: "Nama, tipe, dan status lapangan wajib diisi" });
+        }
+        
         let waktu_sewa = [];
         
         // Parse waktu_sewa from JSON string if it exists
@@ -136,23 +147,26 @@ export const createLapangan = async (req, res) => {
         const foto_lapangan = req.file ? req.file.filename : null;
 
         // Insert lapangan
+        console.log('Inserting lapangan with values:', [nama, foto_lapangan, tipe, status, nomor_lapangan, jenis_lapangan]);
         const insertLapangan = await client.query(
-            'INSERT INTO lapangan (nama, foto_lapangan, tipe, status) VALUES ($1, $2, $3, $4) RETURNING id',
-            [nama, foto_lapangan, tipe, status]
+            'INSERT INTO lapangan (nama, foto_lapangan, tipe, status, nomor_lapangan, jenis_lapangan) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+            [nama, foto_lapangan, tipe, status, nomor_lapangan, jenis_lapangan]
         );
 
         const lapanganId = insertLapangan.rows[0].id;
+        console.log('Lapangan created with ID:', lapanganId);
 
         // Insert waktu_sewa
         if (waktu_sewa && waktu_sewa.length > 0) {
-            const waktuSewaValues = waktu_sewa.map(ws => 
-                `(${lapanganId}, '${ws.jam_mulai}', '${ws.jam_selesai}', ${ws.harga}, '${ws.kategori_waktu || ''}')`
-            ).join(',');
-
-            await client.query(`
-                INSERT INTO waktu_sewa (lapangan_id, jam_mulai, jam_selesai, harga, kategori_waktu)
-                VALUES ${waktuSewaValues}
-            `);
+            console.log('Inserting waktu_sewa:', waktu_sewa);
+            for (const ws of waktu_sewa) {
+                // Pastikan harga adalah angka
+                const harga = parseInt(ws.harga) || 0;
+                await client.query(
+                    'INSERT INTO waktu_sewa (lapangan_id, jam_mulai, jam_selesai, harga, kategori_waktu) VALUES ($1, $2, $3, $4, $5)',
+                    [lapanganId, ws.jam_mulai, ws.jam_selesai, harga, ws.kategori_waktu || '']
+                );
+            }
         }
 
         await client.query('COMMIT');
@@ -160,7 +174,7 @@ export const createLapangan = async (req, res) => {
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('Error in createLapangan:', error);
-        res.status(500).json({ message: "Terjadi kesalahan saat menambah lapangan" });
+        res.status(500).json({ message: `Terjadi kesalahan saat menambah lapangan: ${error.message}` });
     } finally {
         client.release();
     }
@@ -172,14 +186,42 @@ export const updateLapangan = async (req, res) => {
     try {
         await client.query('BEGIN');
         
+        console.log('Update request body:', req.body);
+        console.log('Update request file:', req.file);
+        
         const { id } = req.params;
         const { nama, tipe, status } = req.body;
+        const nomor_lapangan = req.body.nomor_lapangan ? parseInt(req.body.nomor_lapangan) : 1;
+        const jenis_lapangan = req.body.jenis_lapangan || tipe;
+        
+        // Validasi data wajib
+        if (!nama || !tipe || !status) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ message: "Nama, tipe, dan status lapangan wajib diisi" });
+        }
+        
+        // Cek apakah lapangan dengan ID tersebut ada
+        const checkResult = await client.query('SELECT * FROM lapangan WHERE id = $1', [id]);
+        if (checkResult.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: "Lapangan tidak ditemukan" });
+        }
+        
         let waktu_sewa = [];
         
         // Parse waktu_sewa from JSON string if it exists
         if (req.body.waktu_sewa) {
             try {
-                waktu_sewa = JSON.parse(req.body.waktu_sewa);
+                // Cek tipe data waktu_sewa
+                console.log('waktu_sewa type:', typeof req.body.waktu_sewa);
+                
+                if (typeof req.body.waktu_sewa === 'string') {
+                    waktu_sewa = JSON.parse(req.body.waktu_sewa);
+                } else if (Array.isArray(req.body.waktu_sewa)) {
+                    waktu_sewa = req.body.waktu_sewa;
+                }
+                
+                console.log('Parsed waktu_sewa:', waktu_sewa);
             } catch (e) {
                 console.error('Error parsing waktu_sewa:', e);
                 waktu_sewa = [];
@@ -190,30 +232,34 @@ export const updateLapangan = async (req, res) => {
 
         // Update lapangan
         if (foto_lapangan) {
+            console.log('Updating lapangan with foto:', [nama, foto_lapangan, tipe, status, nomor_lapangan, jenis_lapangan, id]);
             await client.query(
-                'UPDATE lapangan SET nama = $1, foto_lapangan = $2, tipe = $3, status = $4 WHERE id = $5',
-                [nama, foto_lapangan, tipe, status, id]
+                'UPDATE lapangan SET nama = $1, foto_lapangan = $2, tipe = $3, status = $4, nomor_lapangan = $5, jenis_lapangan = $6 WHERE id = $7',
+                [nama, foto_lapangan, tipe, status, nomor_lapangan, jenis_lapangan, id]
             );
         } else {
+            console.log('Updating lapangan without foto:', [nama, tipe, status, nomor_lapangan, jenis_lapangan, id]);
             await client.query(
-                'UPDATE lapangan SET nama = $1, tipe = $2, status = $3 WHERE id = $4',
-                [nama, tipe, status, id]
+                'UPDATE lapangan SET nama = $1, tipe = $2, status = $3, nomor_lapangan = $4, jenis_lapangan = $5 WHERE id = $6',
+                [nama, tipe, status, nomor_lapangan, jenis_lapangan, id]
             );
         }
-
-        // Delete existing waktu_sewa
+        
+        // Update waktu_sewa
+        // First delete existing waktu_sewa
         await client.query('DELETE FROM waktu_sewa WHERE lapangan_id = $1', [id]);
-
-        // Insert new waktu_sewa
+        
+        // Then insert new waktu_sewa
         if (waktu_sewa && waktu_sewa.length > 0) {
-            const waktuSewaValues = waktu_sewa.map(ws => 
-                `(${id}, '${ws.jam_mulai}', '${ws.jam_selesai}', ${ws.harga}, '${ws.kategori_waktu || ''}')`
-            ).join(',');
-
-            await client.query(`
-                INSERT INTO waktu_sewa (lapangan_id, jam_mulai, jam_selesai, harga, kategori_waktu)
-                VALUES ${waktuSewaValues}
-            `);
+            console.log('Updating waktu_sewa:', waktu_sewa);
+            for (const ws of waktu_sewa) {
+                // Pastikan harga adalah angka
+                const harga = parseInt(ws.harga) || 0;
+                await client.query(
+                    'INSERT INTO waktu_sewa (lapangan_id, jam_mulai, jam_selesai, harga, kategori_waktu) VALUES ($1, $2, $3, $4, $5)',
+                    [id, ws.jam_mulai, ws.jam_selesai, harga, ws.kategori_waktu || '']
+                );
+            }
         }
 
         await client.query('COMMIT');
@@ -221,7 +267,7 @@ export const updateLapangan = async (req, res) => {
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('Error in updateLapangan:', error);
-        res.status(500).json({ message: "Terjadi kesalahan saat mengupdate lapangan" });
+        res.status(500).json({ message: `Terjadi kesalahan saat mengupdate lapangan: ${error.message}` });
     } finally {
         client.release();
     }
