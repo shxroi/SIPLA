@@ -6,6 +6,7 @@ const router = express.Router();
 
 // Public endpoints (untuk user)
 router.get('/availability/:lapangan_id/:tanggal', bookingController.checkAvailability);
+router.get('/weekly-schedule', bookingController.getWeeklySchedule);
 
 // Endpoint untuk booking (bisa diakses admin dan user)
 router.post('/', bookingController.createBooking); // Endpoint untuk frontend

@@ -4,7 +4,17 @@ import { isAuthenticated } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Routes (semua memerlukan autentikasi admin)
+// Public routes untuk registrasi dan login member
+router.post('/register', memberController.registerMember);
+router.post('/login', memberController.loginMember);
+router.get('/check-availability/:lapangan_id/:tanggal', memberController.checkMemberAvailability);
+
+// Routes untuk member yang sudah login
+router.get('/profile', isAuthenticated, memberController.getMemberProfile);
+router.put('/profile', isAuthenticated, memberController.updateMemberProfile);
+router.get('/bookings', isAuthenticated, memberController.getMemberBookings);
+
+// Routes (memerlukan autentikasi admin)
 router.get('/', isAuthenticated, memberController.getAllMembers);
 router.get('/:id', isAuthenticated, memberController.getMemberById);
 router.post('/', isAuthenticated, memberController.createMember);

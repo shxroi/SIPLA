@@ -59,6 +59,12 @@ function Navbar() {
             >
               FIELDS
             </Link>
+            <Link 
+              to="/fields" 
+              className={`navbar-item ${location.pathname.startsWith('/field/') || location.pathname.startsWith('/booking/') ? 'active' : ''}`}
+            >
+              BOOKING
+            </Link>
             <a 
               href="/#schedule" 
               className="navbar-item"

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { FiGrid, FiCalendar, FiUsers, FiMessageSquare, FiSearch, FiLogOut } from 'react-icons/fi';
+import { FiGrid, FiCalendar, FiUsers, FiMessageSquare, FiSearch, FiLogOut, FiStar } from 'react-icons/fi';
 import axios from 'axios';
 import Fields from './Fields';
 import Bookings from './Bookings';
@@ -96,6 +96,7 @@ function AdminDashboard() {
       ]
     },
     { id: 'kritik', icon: <FiMessageSquare size={20} />, label: 'Kritik & Saran', path: '/admin/dashboard/kritik' },
+    { id: 'testimonial', icon: <FiStar size={20} />, label: 'Testimonial', path: '/admin/testimonials' },
   ];
 
   const location = useLocation();

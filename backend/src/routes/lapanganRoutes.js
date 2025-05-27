@@ -18,8 +18,8 @@ router.get('/public/:id', getLapanganById);
 // Protected routes (memerlukan autentikasi)
 router.get('/', isAuthenticated, getAllLapangan);
 router.get('/:id', isAuthenticated, getLapanganById);
-router.post('/', isAuthenticated, upload.single('foto_lapangan'), createLapangan);
-router.put('/:id', isAuthenticated, upload.single('foto_lapangan'), updateLapangan);
+router.post('/', isAuthenticated, upload.single('foto'), createLapangan);
+router.put('/:id', isAuthenticated, upload.single('foto'), updateLapangan);
 router.delete('/:id', isAuthenticated, deleteLapangan);
 
 export default router;

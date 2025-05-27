@@ -5,6 +5,7 @@ import lapanganRoutes from './src/routes/lapanganRoutes.js';
 import bookingRoutes from './src/routes/bookingRoutes.js';
 import memberRoutes from './src/routes/memberRoutes.js';
 import dashboardRoutes from './src/routes/dashboardRoutes.js';
+import testimonialRoutes from './src/routes/testimonialRoutes.js';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import path from 'path';
@@ -45,6 +46,7 @@ app.use('/api/lapangan', lapanganRoutes);
 app.use('/api/booking', bookingRoutes);
 app.use('/api/member', memberRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/testimonial', testimonialRoutes);
 
 // Test route
 app.get('/api/test', (req, res) => {

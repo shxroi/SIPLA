@@ -925,16 +925,131 @@ export const updateBooking = async (req, res) => {
     }
 };
 
+// Get jadwal lapangan untuk seminggu
+export const getWeeklySchedule = async (req, res) => {
+    try {
+        // Generate tanggal untuk 7 hari ke depan
+        const dates = [];
+        const today = new Date();
+        
+        for (let i = 0; i < 7; i++) {
+            const date = new Date(today);
+            date.setDate(today.getDate() + i);
+            dates.push(date.toISOString().split('T')[0]);
+        }
+        
+        // Get semua lapangan
+        const lapanganResult = await pool.query(`
+            SELECT id, nama, tipe, nomor_lapangan 
+            FROM lapangan 
+            ORDER BY tipe, nomor_lapangan
+        `);
+        
+        const lapangan = lapanganResult.rows;
+        
+        // Get semua waktu sewa
+        const waktuSewaResult = await pool.query(`
+            SELECT lapangan_id, json_agg(
+                json_build_object(
+                    'jam_mulai', jam_mulai,
+                    'jam_selesai', jam_selesai,
+                    'harga', harga
+                ) ORDER BY jam_mulai
+            ) as time_slots
+            FROM waktu_sewa
+            GROUP BY lapangan_id
+        `);
+        
+        const waktuSewaMap = {};
+        waktuSewaResult.rows.forEach(row => {
+            waktuSewaMap[row.lapangan_id] = row.time_slots;
+        });
+        
+        // Get semua booking untuk 7 hari ke depan
+        const bookingResult = await pool.query(`
+            SELECT lapangan_id, tanggal, jam_mulai, jam_selesai, status_booking
+            FROM booking
+            WHERE tanggal >= $1 AND tanggal <= $2
+            AND status_booking != 'cancelled'
+            ORDER BY tanggal, jam_mulai
+        `, [dates[0], dates[6]]);
+        
+        // Organize bookings by date and field
+        const bookingMap = {};
+        
+        bookingResult.rows.forEach(booking => {
+            if (!bookingMap[booking.tanggal]) {
+                bookingMap[booking.tanggal] = {};
+            }
+            
+            if (!bookingMap[booking.tanggal][booking.lapangan_id]) {
+                bookingMap[booking.tanggal][booking.lapangan_id] = [];
+            }
+            
+            bookingMap[booking.tanggal][booking.lapangan_id].push({
+                jam_mulai: booking.jam_mulai,
+                jam_selesai: booking.jam_selesai,
+                status: booking.status_booking
+            });
+        });
+        
+        // Prepare response
+        const schedule = lapangan.map(field => {
+            const timeSlots = waktuSewaMap[field.id] || [];
+            
+            const dailySchedule = dates.map(date => {
+                const bookings = (bookingMap[date] && bookingMap[date][field.id]) || [];
+                
+                // Mark each time slot as available or booked
+                const slots = timeSlots.map(slot => {
+                    const isBooked = bookings.some(booking => 
+                        booking.jam_mulai === slot.jam_mulai && 
+                        booking.jam_selesai === slot.jam_selesai
+                    );
+                    
+                    return {
+                        ...slot,
+                        status: isBooked ? 'booked' : 'available'
+                    };
+                });
+                
+                return {
+                    date,
+                    day: new Date(date).toLocaleDateString('id-ID', { weekday: 'long' }),
+                    slots
+                };
+            });
+            
+            return {
+                id: field.id,
+                nama: field.nama,
+                tipe: field.tipe,
+                nomor_lapangan: field.nomor_lapangan,
+                schedule: dailySchedule
+            };
+        });
+        
+        res.json({
+            dates,
+            fields: schedule
+        });
+    } catch (error) {
+        console.error('Error in getWeeklySchedule:', error);
+        res.status(500).json({ message: "Terjadi kesalahan saat mengambil jadwal lapangan" });
+    }
+};
+
 export default {
     checkAvailability,
     createBooking,
     createEventBooking,
     getAllBookings,
-    getRegularBookings,
-    getEventBookings,
     getBookingById,
-    updateBooking,
     updateBookingStatus,
     deleteBooking,
-    getDashboardStats
+    getDashboardStats,
+    getRegularBookings,
+    getEventBookings,
+    updateBooking,
+    getWeeklySchedule
 };

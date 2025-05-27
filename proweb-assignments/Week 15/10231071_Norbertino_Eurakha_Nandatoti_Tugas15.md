@@ -1,3 +1,51 @@
+# Laporan Progres Mingguan - SIPLA
+**Kelompok**: 4
+**Anggota** : 
+- Alsha Dwi Cahya 10231011
+- Muhammad Aqila Ardhi 10231057
+- Nanda Aulia Putri 10231067
+- Norbertino Eurakha Nandatoti 101231071
+
+**Mitra**: TQ1
+**Pekan ke-**: [15]
+**Tanggal**: [23/05/2025]
+
+## Progress Summary
+Pada pekan ini, kami telah membuat kemajuan yang signifikan dalam pengembangan Sistem Informasi Pemesanan Lapangan Olahraga (SIPLA). Kami telah mengembangkan beberapa endpoint API yang memungkinkan akses ke data dari database, seperti endpoint untuk mengambil data lapangan, data pengguna, dan data pemesanan. Selain itu, kami juga telah membuat beberapa halaman web yang dapat diakses oleh pengguna, seperti halaman utama, halaman pemesanan, dan halaman profil pengguna.
+
+
+Selain itu, kami juga telah melakukan pengujian terhadap beberapa fitur yang telah dikembangkan, seperti fitur pemesanan dan fitur profil pengguna. Hasil pengujian menunjukkan bahwa fitur-fitur tersebut dapat berjalan dengan lancar dan sesuai dengan kebutuhan pengguna.
+
+Dalam keseluruhan, kami telah membuat kemajuan yang signifikan dalam pengembangan SIPLA pada pekan ini. Kami akan terus mengembangkan dan memperbaiki sistem ini agar dapat memenuhi kebutuhan pengguna dan mitra.
+
+## Accomplished Tasks
+
+- Mengembangkan beberapa endpoint API untuk mengakses data dari database, seperti endpoint untuk mengambil data lapangan, data pengguna, dan data pemesanan.
+- Mengembangkan beberapa halaman web yang dapat diakses oleh pengguna, seperti halaman utama, halaman pemesanan, dan halaman profil pengguna.
+- Mengembangkan desain ERD untuk database SIPLA yang lebih komprehensif.
+- Melakukan pengujian terhadap beberapa fitur yang telah dikembangkan, seperti fitur pemesanan dan fitur profil pengguna.
+
+## Challenges & Solutions
+- **Challenge 1**: Mengintegrasikan endpoint API dengan database untuk mengakses data lapangan, pengguna, dan pemesanan.
+  - **Solution**: Menggunakan framework Express.js untuk menghubungkan endpoint API dengan database MySQL, serta mengimplementasikan query yang sesuai untuk mengambil data yang diperlukan.
+- **Challenge 2**: Mengembangkan halaman web yang dapat diakses oleh pengguna untuk melakukan pemesanan lapangan dan melihat profil pengguna.
+  - **Solution**: Menggunakan React.js untuk mengembangkan halaman web yang responsif dan mudah digunakan, serta mengintegrasikan halaman web dengan endpoint API yang telah dikembangkan untuk mengambil data yang diperlukan.
+
+## Next Week Plan
+- Mengoptimalkan kinerja sistem dengan memperbaiki bug yang masih terdapat.
+- Menyelesaikan fitur umpan balik dan pesan untuk meningkatkan pengalaman pengguna.
+- Mengembangkan fitur notifikasi untuk pemesanan dan perubahan status lapangan.
+- Mengintegrasikan sistem pembayaran online untuk memudahkan transaksi.
+
+## Contributions
+- **[Alsha Dwi Cahya]**: Menjelaskan dokumentasi dokumen SIPLA.
+- **[Muhammad Aqila Ardhi]**: Melakukan DEMO ke Mitra Terkiat.
+- **[Nanda Aulia Putri]**: Menjelaskan terkait sistematis pada SIPLA.
+- **[Norbertino Eurakha Nandatoti]**: Merancang dan Membangun halaman web untuk SIPLA.
+
+# Dokumentasi MD
+
+```
 # TQ1 Sports Field Booking System (SIPLA)
 
 ![TQ1 Sports Field Booking System](/frontend/public/images/hero-bg.jpg)
@@ -62,7 +110,7 @@ TQ1 Sports Field Booking System menggunakan desain modern yang terinspirasi dari
   - Dashboard admin dan member yang intuitif
 
 ## Struktur Proyek
-```
+
 SIPLA/
 ├── frontend/                  # React frontend
 │   ├── src/
@@ -102,7 +150,7 @@ SIPLA/
     │   │   ├── db.js          # Koneksi database
     │   └── app.js             # Setup Express
     └── package.json
-```
+
 
 ## Instalasi dan Pengembangan
 
@@ -141,14 +189,14 @@ node index.js
 ### Environment Variables
 
 #### Frontend (.env)
-```
+
 VITE_API_URL=http://localhost:3000/api
 VITE_ADMIN_URL=http://localhost:3000/api/admin
 VITE_MEMBER_URL=http://localhost:3000/api/member
-```
+
 
 #### Backend (.env)
-```
+
 PORT=3000
 DB_HOST=localhost
 DB_USER=root
@@ -159,7 +207,7 @@ JWT_EXPIRES_IN=7d
 EMAIL_SERVICE=gmail
 EMAIL_USER=your_email@gmail.com
 EMAIL_PASS=your_app_password
-```
+
 
 ## API Endpoints
 
@@ -265,3 +313,9 @@ Silakan berkontribusi dengan membuat pull request. Untuk perubahan besar, harap 
 ## Penghargaan
 - Icon dari [Font Awesome](https://fontawesome.com)
 - Font dari [Google Fonts](https://fonts.google.com)
+```
+
+
+## Link Ppt
+- [Link Ppt](https://www.canva.com/design/DAGmfg_RXM8/4VTToIg_n-Zqqni6uD6q8Q/edit)
+

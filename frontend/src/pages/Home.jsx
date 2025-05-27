@@ -3,6 +3,8 @@ import { useEffect, useState, useRef } from 'react';
 import '../assets/css/tq1-landing.css';
 import '../assets/js/tq1-scripts.js';
 import Navbar from '../components/Navbar';
+import ScheduleTable from '../components/ScheduleTable';
+import TestimonialSection from '../components/TestimonialSection';
 
 function Home() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -54,8 +56,8 @@ function Home() {
           <h6>new way to book your field!</h6>
           <h1>UPGRADE YOUR GAME AT TQ1</h1>
           <div className="mt-4">
-            <Link to="/booking" className="custom-btn bg-color mr-3">GET STARTED</Link>
-            <Link to="/fields" className="custom-btn bordered">LEARN MORE</Link>
+            <Link to="/fields" className="custom-btn bg-color mr-3">GET STARTED</Link>
+            <Link to="/#about" className="custom-btn bordered">LEARN MORE</Link>
           </div>
         </div>
       </section>
@@ -70,7 +72,7 @@ function Home() {
                 <p className="section-sub-title">TQ1 Sports provides premium sports facilities for all your needs</p>
               </div>
 
-              <p>TQ1 Sports Field Booking System offers a seamless experience for booking high-quality sports fields. Whether you're looking for futsal, badminton, or basketball courts, we've got you covered with our state-of-the-art facilities.</p>
+              <p>TQ1 Sports Field Booking System offers a seamless experience for booking high-quality sports fields. Whether you're looking for futsal or badminton courts, we've got you covered with our state-of-the-art facilities.</p>
 
               <p>Our mission is to promote an active lifestyle by providing accessible and well-maintained sports facilities for everyone. Join our community today and experience the difference!</p>
             </div>
@@ -151,112 +153,20 @@ function Home() {
         <div className="container">
           <div className="row">
             <div className="col-lg-12 col-12 text-center mb-5">
-              <h2 className="section-title">Field Timetable</h2>
+              <h2 className="section-title">Jadwal Lapangan</h2>
+              <p className="section-sub-title">Lihat ketersediaan lapangan untuk 7 hari ke depan</p>
             </div>
 
             <div className="col-lg-12 col-12">
-              <table className="schedule-table table table-bordered">
-                <thead className="thead-light">
-                  <tr>
-                    <th><small>Time</small></th>
-                    <th><small>Monday</small></th>
-                    <th><small>Tuesday</small></th>
-                    <th><small>Wednesday</small></th>
-                    <th><small>Thursday</small></th>
-                    <th><small>Friday</small></th>
-                    <th><small>Saturday</small></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td><small>07:00</small></td>
-                    <td>
-                      <strong>Futsal</strong>
-                      <span>7:00 - 8:00</span>
-                    </td>
-                    <td>
-                      <strong>Badminton</strong>
-                      <span>7:00 - 8:00</span>
-                    </td>
-                    <td>
-                      <strong>Futsal</strong>
-                      <span>7:00 - 8:00</span>
-                    </td>
-                    <td>
-                      <strong>Badminton</strong>
-                      <span>7:00 - 8:00</span>
-                    </td>
-                    <td>
-                      <strong>Futsal</strong>
-                      <span>7:00 - 8:00</span>
-                    </td>
-                    <td>
-                      <strong>Open</strong>
-                      <span>7:00 - 8:00</span>
-                    </td>
-                  </tr>
-
-                  <tr>
-                    <td><small>09:00</small></td>
-                    <td>
-                      <strong>Basketball</strong>
-                      <span>9:00 - 10:00</span>
-                    </td>
-                    <td>
-                      <strong>Futsal</strong>
-                      <span>9:00 - 10:00</span>
-                    </td>
-                    <td>
-                      <strong>Basketball</strong>
-                      <span>9:00 - 10:00</span>
-                    </td>
-                    <td>
-                      <strong>Futsal</strong>
-                      <span>9:00 - 10:00</span>
-                    </td>
-                    <td>
-                      <strong>Basketball</strong>
-                      <span>9:00 - 10:00</span>
-                    </td>
-                    <td>
-                      <strong>Open</strong>
-                      <span>9:00 - 10:00</span>
-                    </td>
-                  </tr>
-
-                  <tr>
-                    <td><small>13:00</small></td>
-                    <td>
-                      <strong>Badminton</strong>
-                      <span>13:00 - 14:00</span>
-                    </td>
-                    <td>
-                      <strong>Basketball</strong>
-                      <span>13:00 - 14:00</span>
-                    </td>
-                    <td>
-                      <strong>Badminton</strong>
-                      <span>13:00 - 14:00</span>
-                    </td>
-                    <td>
-                      <strong>Basketball</strong>
-                      <span>13:00 - 14:00</span>
-                    </td>
-                    <td>
-                      <strong>Badminton</strong>
-                      <span>13:00 - 14:00</span>
-                    </td>
-                    <td>
-                      <strong>Open</strong>
-                      <span>13:00 - 14:00</span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+              <ScheduleTable />
             </div>
           </div>
         </div>
       </section>
+
+
+      {/* Testimonial Section */}
+      <TestimonialSection />
 
       {/* Membership Section */}
       <section className="feature section">
@@ -301,7 +211,7 @@ function Home() {
 
               <div className="google-map pt-5">
                 <iframe 
-                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3966.4!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNsKwMTInMzAuOCJTIDEwNsKwNDgnMzEuMiJF!5e0!3m2!1sen!2sid!4v1620000000000!5m2!1sen!2sid" 
+                  src="https://www.google.com/maps/embed?q=Jakarta+Selatan&t=m&z=13&output=embed" 
                   width="100%" 
                   height="300" 
                   style={{ border: 0 }} 
