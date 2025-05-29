@@ -29,12 +29,28 @@ function FieldTestimonial({ lapanganId, lapanganNama }) {
   const fetchTestimonials = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`http://localhost:3000/api/testimonial/field/${lapanganId}`);
-      setTestimonials(response.data.data);
+      setError(null); // Reset error state before fetching
+      
+      // Explicitly set status=approved in the query params
+      const response = await axios.get(`http://localhost:3000/api/testimonial/field/${lapanganId}`, {
+        params: {
+          status: 'approved',
+          limit: 10,
+          page: 1
+        }
+      });
+      
+      if (response.data && response.data.data) {
+        setTestimonials(response.data.data);
+      } else {
+        setTestimonials([]);
+      }
+      
       setLoading(false);
     } catch (error) {
       console.error('Error fetching testimonials:', error);
-      setError('Gagal memuat testimonial');
+      setError('Gagal memuat testimonial. Silakan coba lagi nanti.');
+      setTestimonials([]); // Set empty array on error
       setLoading(false);
     }
   };
@@ -42,10 +58,18 @@ function FieldTestimonial({ lapanganId, lapanganNama }) {
   const fetchAverageRating = async () => {
     try {
       const response = await axios.get(`http://localhost:3000/api/testimonial/field/${lapanganId}/rating`);
-      setAverageRating(response.data.average_rating);
-      setTotalReviews(response.data.total_reviews);
+      
+      if (response.data && response.data.average_rating !== undefined) {
+        setAverageRating(response.data.average_rating || 0);
+        setTotalReviews(response.data.total_reviews || 0);
+      } else {
+        setAverageRating(0);
+        setTotalReviews(0);
+      }
     } catch (error) {
       console.error('Error fetching average rating:', error);
+      setAverageRating(0);
+      setTotalReviews(0);
     }
   };
 
@@ -67,21 +91,15 @@ function FieldTestimonial({ lapanganId, lapanganNama }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validasi form
-    if (!formData.nama || !formData.pesan) {
-      setSubmitStatus({
-        success: false,
-        message: 'Nama dan pesan wajib diisi'
-      });
-      return;
-    }
-    
     try {
-      const response = await axios.post('http://localhost:3000/api/testimonial', formData);
+      const response = await axios.post('http://localhost:3000/api/testimonial', {
+        ...formData,
+        lapangan_id: lapanganId
+      });
       
       setSubmitStatus({
         success: true,
-        message: response.data.message
+        message: 'Terima kasih! Ulasan Anda telah dikirim dan sedang menunggu persetujuan.'
       });
       
       // Reset form
@@ -93,122 +111,112 @@ function FieldTestimonial({ lapanganId, lapanganNama }) {
         rating: 5
       });
       
-      // Refresh testimonials after 2 seconds
-      setTimeout(() => {
-        fetchTestimonials();
-        fetchAverageRating();
-        setShowForm(false);
-      }, 2000);
+      // Refresh average rating
+      fetchAverageRating();
     } catch (error) {
       console.error('Error submitting testimonial:', error);
       setSubmitStatus({
         success: false,
-        message: error.response?.data?.message || 'Terjadi kesalahan saat mengirim testimonial'
+        message: 'Terjadi kesalahan saat mengirim ulasan. Silakan coba lagi.'
       });
     }
   };
 
-  const toggleForm = () => {
-    setShowForm(!showForm);
-    // Reset status message when toggling form
-    setSubmitStatus({
-      success: false,
-      message: ''
-    });
-  };
-
   return (
-    <div className="field-testimonial-container">
-      <div className="field-rating-summary mb-4">
-        <h4 className="mb-3">Ulasan Pengguna</h4>
-        <div className="d-flex align-items-center">
-          <div className="rating-number me-3">
-            <span className="display-4 fw-bold">{averageRating}</span>
-            <span className="text-muted">/5</span>
-          </div>
-          <div className="rating-stars">
-            <StarRating rating={parseFloat(averageRating)} readOnly={true} />
-            <div className="text-muted mt-1">{totalReviews} ulasan</div>
+    <div className="testimonial-section mt-4">
+      {/* Header */}
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h4 className="mb-1">Ulasan Pengguna</h4>
+          <div className="d-flex align-items-center">
+            <StarRating rating={averageRating} readOnly={true} />
+            <span className="ms-2">
+              <strong>{averageRating.toFixed(1)}</strong>/5 ({totalReviews} ulasan)
+            </span>
           </div>
         </div>
-      </div>
-
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h5 className="mb-0">Kesan & Pesan</h5>
         <button 
-          className="btn btn-primary btn-sm" 
-          onClick={toggleForm}
+          className="btn btn-primary" 
+          onClick={() => setShowForm(!showForm)}
         >
           {showForm ? 'Tutup Form' : 'Tulis Ulasan'}
         </button>
       </div>
 
-      {/* Form Testimonial */}
+      {/* Form */}
       {showForm && (
-        <div className="testimonial-form-container mb-4 p-3 border rounded bg-light">
-          {submitStatus.message && (
-            <div className={`alert ${submitStatus.success ? 'alert-success' : 'alert-danger'} mb-3`}>
+        <div className="testimonial-form mb-4 p-3 border rounded">
+          {submitStatus.success ? (
+            <div className="alert alert-success">
               {submitStatus.message}
+              <button 
+                className="btn btn-sm btn-outline-success ms-2"
+                onClick={() => {
+                  setSubmitStatus({ success: false, message: '' });
+                }}
+              >
+                Tulis Ulasan Lain
+              </button>
             </div>
-          )}
-          
-          <form onSubmit={handleSubmit}>
-            <div className="mb-3">
-              <label htmlFor="nama" className="form-label">Nama <span className="text-danger">*</span></label>
-              <input
-                type="text"
-                className="form-control"
-                id="nama"
-                name="nama"
-                value={formData.nama}
-                onChange={handleInputChange}
-                placeholder="Masukkan nama Anda"
-                required
-              />
-            </div>
-            
-            <div className="mb-3">
-              <label htmlFor="email" className="form-label">Email</label>
-              <input
-                type="email"
-                className="form-control"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                placeholder="Masukkan email Anda (opsional)"
-              />
-            </div>
-            
-            <div className="mb-3">
-              <label htmlFor="rating" className="form-label">Rating</label>
-              <div>
-                <StarRating 
-                  rating={formData.rating} 
-                  onRatingChange={handleRatingChange} 
-                  readOnly={false}
+          ) : (
+            <form onSubmit={handleSubmit}>
+              <div className="mb-3">
+                <label htmlFor="nama" className="form-label">Nama <span className="text-danger">*</span></label>
+                <input
+                  type="text"
+                  className="form-control"
+                  id="nama"
+                  name="nama"
+                  value={formData.nama}
+                  onChange={handleInputChange}
+                  placeholder="Masukkan nama Anda"
+                  required
                 />
               </div>
-            </div>
-            
-            <div className="mb-3">
-              <label htmlFor="pesan" className="form-label">Pesan <span className="text-danger">*</span></label>
-              <textarea
-                className="form-control"
-                id="pesan"
-                name="pesan"
-                value={formData.pesan}
-                onChange={handleInputChange}
-                rows="4"
-                placeholder={`Bagikan pengalaman Anda bermain di lapangan ${lapanganNama}`}
-                required
-              ></textarea>
-            </div>
-            
-            <button type="submit" className="btn btn-primary">
-              Kirim Ulasan
-            </button>
-          </form>
+              
+              <div className="mb-3">
+                <label htmlFor="email" className="form-label">Email</label>
+                <input
+                  type="email"
+                  className="form-control"
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  placeholder="Masukkan email Anda (opsional)"
+                />
+              </div>
+              
+              <div className="mb-3">
+                <label htmlFor="rating" className="form-label">Rating</label>
+                <div>
+                  <StarRating 
+                    rating={formData.rating} 
+                    onRatingChange={handleRatingChange} 
+                    readOnly={false}
+                  />
+                </div>
+              </div>
+              
+              <div className="mb-3">
+                <label htmlFor="pesan" className="form-label">Pesan <span className="text-danger">*</span></label>
+                <textarea
+                  className="form-control"
+                  id="pesan"
+                  name="pesan"
+                  value={formData.pesan}
+                  onChange={handleInputChange}
+                  rows="4"
+                  placeholder={`Bagikan pengalaman Anda bermain di lapangan ${lapanganNama}`}
+                  required
+                ></textarea>
+              </div>
+              
+              <button type="submit" className="btn btn-primary">
+                Kirim Ulasan
+              </button>
+            </form>
+          )}
         </div>
       )}
 
@@ -223,14 +231,8 @@ function FieldTestimonial({ lapanganId, lapanganNama }) {
         ) : error ? (
           <div className="alert alert-danger">{error}</div>
         ) : testimonials.length === 0 ? (
-          <div className="text-center py-4">
-            <p className="text-muted mb-0">Belum ada ulasan untuk lapangan ini</p>
-            <button 
-              className="btn btn-outline-primary mt-2" 
-              onClick={() => setShowForm(true)}
-            >
-              Jadilah yang pertama mengulas
-            </button>
+          <div className="text-center py-4 border rounded p-3 bg-light">
+            <p className="mb-0">Belum ada ulasan untuk lapangan ini. Jadilah yang pertama memberikan ulasan!</p>
           </div>
         ) : (
           <div className="testimonial-items">

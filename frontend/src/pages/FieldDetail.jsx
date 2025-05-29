@@ -256,7 +256,12 @@ function FieldDetail() {
               
               {/* Testimonial Section */}
               <div className="border-t border-gray-200 pt-6 mt-6 mb-6">
-                <FieldTestimonial lapanganId={field.id} lapanganNama={field.nama} />
+                {field && field.id && (
+                  <FieldTestimonial 
+                    lapanganId={field.id.toString()} 
+                    lapanganNama={field.nama || ''} 
+                  />
+                )}
               </div>
             </>
           ) : (

@@ -10,6 +10,7 @@ import FutsalFields from '../../components/admin/FutsalFields';
 import BadmintonFields from '../../components/admin/BadmintonFields';
 import BadmintonMembers from '../../components/admin/BadmintonMembers';
 import DashboardStats from '../../components/admin/DashboardStats';
+import TestimonialManagement from './TestimonialManagement';
 
 function AdminDashboard() {
   const navigate = useNavigate();
@@ -96,7 +97,7 @@ function AdminDashboard() {
       ]
     },
     { id: 'kritik', icon: <FiMessageSquare size={20} />, label: 'Kritik & Saran', path: '/admin/dashboard/kritik' },
-    { id: 'testimonial', icon: <FiStar size={20} />, label: 'Testimonial', path: '/admin/testimonials' },
+    { id: 'testimonial', icon: <FiStar size={20} />, label: 'Testimonial', path: '/admin/dashboard/testimonial' },
   ];
 
   const location = useLocation();
@@ -114,6 +115,8 @@ function AdminDashboard() {
       setActiveMenu('member');
     } else if (path.includes('/kritik')) {
       setActiveMenu('kritik');
+    } else if (path.includes('/testimonial')) {
+      setActiveMenu('testimonial');
     }
   }, [location.pathname]);
 
@@ -267,6 +270,9 @@ function AdminDashboard() {
                 {/* Kritik & Saran component will be added here */}
               </div>
             } />
+            
+            {/* Testimonial Route */}
+            <Route path="/testimonial" element={<TestimonialManagement />} />
           </Routes>
         </main>
       </div>

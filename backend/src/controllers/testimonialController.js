@@ -6,6 +6,12 @@ import pool from '../config/database.js';
 export const getTestimonialsByField = async (req, res) => {
     try {
         const { lapanganId } = req.params;
+        
+        // Validasi lapanganId
+        if (!lapanganId || isNaN(parseInt(lapanganId))) {
+            return res.status(400).json({ message: "ID lapangan tidak valid" });
+        }
+        
         const {
             page = 1,
             limit = 10,
@@ -13,13 +19,13 @@ export const getTestimonialsByField = async (req, res) => {
         } = req.query;
         
         const offset = (page - 1) * limit;
-        let params = [lapanganId];
-        let whereClause = ['lapangan_id = $1'];
+        let params = [parseInt(lapanganId)]; // Pastikan lapanganId adalah integer
+        let whereClause = ['t.lapangan_id = $1']; // Tambahkan alias tabel
         let paramCounter = 2;
         
         // Filter berdasarkan status
         if (status !== 'all') {
-            whereClause.push(`status = $${paramCounter++}`);
+            whereClause.push(`t.status = $${paramCounter++}`);
             params.push(status);
         }
         
@@ -28,7 +34,7 @@ export const getTestimonialsByField = async (req, res) => {
         // Get total count
         const countQuery = `
             SELECT COUNT(*) 
-            FROM testimonial
+            FROM testimonial t
             ${whereString}
         `;
         
@@ -40,7 +46,7 @@ export const getTestimonialsByField = async (req, res) => {
         const query = `
             SELECT t.id, t.nama, t.email, t.pesan, t.rating, t.status, t.created_at, l.nama as lapangan_nama
             FROM testimonial t
-            JOIN lapangan l ON t.lapangan_id = l.id
+            LEFT JOIN lapangan l ON t.lapangan_id = l.id
             ${whereString}
             ORDER BY t.created_at DESC
             LIMIT $${paramCounter++} OFFSET $${paramCounter++}
@@ -64,6 +70,8 @@ export const getTestimonialsByField = async (req, res) => {
         res.status(500).json({ message: "Terjadi kesalahan saat mengambil data testimonial" });
     }
 };
+
+
 
 // Get semua testimonial (untuk publik)
 export const getAllTestimonials = async (req, res) => {
@@ -134,18 +142,23 @@ export const getAverageRatingByField = async (req, res) => {
     try {
         const { lapanganId } = req.params;
         
+        // Validasi lapanganId
+        if (!lapanganId || isNaN(parseInt(lapanganId))) {
+            return res.status(400).json({ message: "ID lapangan tidak valid" });
+        }
+        
         const query = `
-            SELECT AVG(rating) as average_rating, COUNT(*) as total_reviews
+            SELECT COALESCE(AVG(rating), 0) as average_rating, COUNT(*) as total_reviews
             FROM testimonial
             WHERE lapangan_id = $1 AND status = 'approved'
         `;
         
-        const result = await pool.query(query, [lapanganId]);
+        const result = await pool.query(query, [parseInt(lapanganId)]);
         
         res.json({
-            lapangan_id: lapanganId,
-            average_rating: parseFloat(result.rows[0].average_rating || 0).toFixed(1),
-            total_reviews: parseInt(result.rows[0].total_reviews)
+            lapangan_id: parseInt(lapanganId),
+            average_rating: parseFloat(result.rows[0].average_rating || 0),
+            total_reviews: parseInt(result.rows[0].total_reviews || 0)
         });
     } catch (error) {
         console.error('Error in getAverageRatingByField:', error);
@@ -165,16 +178,27 @@ export const createTestimonial = async (req, res) => {
         } = req.body;
         
         // Validasi data wajib
-        if (!nama || !pesan || !lapangan_id) {
-            return res.status(400).json({ message: "Nama, pesan, dan lapangan wajib diisi" });
+        if (!nama || !pesan) {
+            return res.status(400).json({ message: "Nama dan pesan harus diisi" });
         }
         
         // Validasi lapangan_id
+        if (!lapangan_id || isNaN(parseInt(lapangan_id))) {
+            return res.status(400).json({ message: "ID lapangan tidak valid" });
+        }
+        
+        // Validasi rating
+        const ratingValue = parseInt(rating);
+        if (isNaN(ratingValue) || ratingValue < 1 || ratingValue > 5) {
+            return res.status(400).json({ message: "Rating harus berupa angka 1-5" });
+        }
+        
+        // Periksa apakah lapangan ada
         const checkLapanganQuery = `SELECT id FROM lapangan WHERE id = $1`;
-        const lapanganResult = await pool.query(checkLapanganQuery, [lapangan_id]);
+        const lapanganResult = await pool.query(checkLapanganQuery, [parseInt(lapangan_id)]);
         
         if (lapanganResult.rows.length === 0) {
-            return res.status(400).json({ message: "Lapangan tidak ditemukan" });
+            return res.status(404).json({ message: "Lapangan tidak ditemukan" });
         }
         
         // Insert testimonial
@@ -189,8 +213,8 @@ export const createTestimonial = async (req, res) => {
             nama, 
             email || null, 
             pesan, 
-            lapangan_id,
-            rating,
+            parseInt(lapangan_id),
+            ratingValue,
             'pending' // default status pending (menunggu approval)
         ]);
         
@@ -200,6 +224,12 @@ export const createTestimonial = async (req, res) => {
         });
     } catch (error) {
         console.error('Error in createTestimonial:', error);
+        
+        // Tangani error foreign key constraint
+        if (error.code === '23503') { // foreign key violation
+            return res.status(400).json({ message: "Lapangan yang dipilih tidak valid" });
+        }
+        
         res.status(500).json({ message: "Terjadi kesalahan saat mengirim testimonial" });
     }
 };

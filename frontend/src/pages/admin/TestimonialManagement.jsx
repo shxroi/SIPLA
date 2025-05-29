@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import StarRating from '../../components/StarRating';
 
 function TestimonialManagement() {
@@ -23,17 +23,17 @@ function TestimonialManagement() {
     try {
       setLoading(true);
       
-      // Get token from localStorage
-      const token = localStorage.getItem('adminToken');
+      // Get admin user from localStorage
+      const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
       
-      if (!token) {
-        navigate('/admin/login');
+      if (!adminUser.token) {
+        navigate('/admin');
         return;
       }
       
       const response = await axios.get('http://localhost:3000/api/testimonial/admin', {
         headers: {
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${adminUser.token}`
         },
         params: {
           page: currentPage,
@@ -60,11 +60,11 @@ function TestimonialManagement() {
   
   const handleStatusChange = async (id, newStatus) => {
     try {
-      // Get token from localStorage
-      const token = localStorage.getItem('adminToken');
+      // Get admin user from localStorage
+      const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
       
-      if (!token) {
-        navigate('/admin/login');
+      if (!adminUser.token) {
+        navigate('/admin');
         return;
       }
       
@@ -72,7 +72,7 @@ function TestimonialManagement() {
         { status: newStatus },
         {
           headers: {
-            Authorization: `Bearer ${token}`
+            Authorization: `Bearer ${adminUser.token}`
           }
         }
       );
@@ -109,17 +109,17 @@ function TestimonialManagement() {
     }
     
     try {
-      // Get token from localStorage
-      const token = localStorage.getItem('adminToken');
+      // Get admin user from localStorage
+      const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
       
-      if (!token) {
-        navigate('/admin/login');
+      if (!adminUser.token) {
+        navigate('/admin');
         return;
       }
       
       await axios.delete(`http://localhost:3000/api/testimonial/admin/${id}`, {
         headers: {
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${adminUser.token}`
         }
       });
       
@@ -180,20 +180,12 @@ function TestimonialManagement() {
   }
   
   return (
-    <div className="bg-gray-100 min-h-screen">
+    <div>
       <div className="container-fluid px-4">
-        <div className="d-flex justify-content-between align-items-center mb-4 mt-4">
-          <h1 className="m-0">Manajemen Testimonial</h1>
-          <Link to="/admin/dashboard" className="btn btn-outline-primary">
-            &larr; Kembali ke Dashboard
-          </Link>
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <h1 className="text-2xl font-bold text-gray-800">Manajemen Testimonial</h1>
         </div>
-        <nav aria-label="breadcrumb" className="mb-4">
-          <ol className="breadcrumb">
-            <li className="breadcrumb-item"><Link to="/admin/dashboard">Dashboard</Link></li>
-            <li className="breadcrumb-item active">Testimonial</li>
-          </ol>
-        </nav>
+
         
         {actionStatus.message && (
           <div className={`alert alert-${actionStatus.type}`}>
