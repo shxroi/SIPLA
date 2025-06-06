@@ -96,8 +96,8 @@ function AdminDashboard() {
         { id: 'member-badminton', label: 'Member Bulutangkis', path: '/admin/dashboard/member/badminton' }
       ]
     },
-    { id: 'kritik', icon: <FiMessageSquare size={20} />, label: 'Kritik & Saran', path: '/admin/dashboard/kritik' },
-    { id: 'testimonial', icon: <FiStar size={20} />, label: 'Testimonial', path: '/admin/dashboard/testimonial' },
+    { id: 'kritik', icon: <FiMessageSquare size={20} />, label: 'Kritik & Saran', path: '/admin/dashboard/testimonial' },
+
   ];
 
   const location = useLocation();
@@ -115,8 +115,6 @@ function AdminDashboard() {
       setActiveMenu('member');
     } else if (path.includes('/kritik')) {
       setActiveMenu('kritik');
-    } else if (path.includes('/testimonial')) {
-      setActiveMenu('testimonial');
     }
   }, [location.pathname]);
 
@@ -139,8 +137,7 @@ function AdminDashboard() {
       <div className="w-64 bg-white shadow-lg">
         <div className="p-4">
           <div className="flex items-center space-x-2">
-            <img src="/logo.png" alt="SIPLA" className="h-8" />
-            <span className="text-xl font-bold text-blue-600">SIPLA</span>
+            <span className="text-xl font-bold text-blue-600 h-2" style={{ fontSize: '50px' }}>SIPLA</span>
           </div>
         </div>
         <nav className="mt-8">
@@ -169,7 +166,7 @@ function AdminDashboard() {
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
+                    xmlns="http://www.w3.org/000/svg"
                   >
                     <path
                       strokeLinecap="round"
@@ -262,14 +259,6 @@ function AdminDashboard() {
               </div>
             } />
             <Route path="/member/badminton" element={<BadmintonMembers />} />
-            
-            {/* Kritik & Saran Route */}
-            <Route path="/kritik" element={
-              <div>
-                <h1 className="text-2xl font-bold text-gray-800 mb-6">Kritik & Saran</h1>
-                {/* Kritik & Saran component will be added here */}
-              </div>
-            } />
             
             {/* Testimonial Route */}
             <Route path="/testimonial" element={<TestimonialManagement />} />

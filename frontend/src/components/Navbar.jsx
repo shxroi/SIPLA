@@ -58,12 +58,12 @@ function Navbar() {
               className={`navbar-item ${location.pathname === '/fields' ? 'active' : ''}`}
             >
               FIELDS
-            </Link>
+            {/* </Link>
             <Link 
               to="/fields" 
               className={`navbar-item ${location.pathname.startsWith('/field/') || location.pathname.startsWith('/booking/') ? 'active' : ''}`}
             >
-              BOOKING
+              BOOKING */}
             </Link>
             <a 
               href="/#schedule" 
@@ -71,12 +71,12 @@ function Navbar() {
             >
               SCHEDULES
             </a>
-            <Link 
+            {/* <Link 
               to="/booking" 
               className={`navbar-item ${location.pathname === '/booking' ? 'active' : ''}`}
             >
               BOOKING
-            </Link>
+            </Link> */}
             <a 
               href="/#contact" 
               className="navbar-item"
@@ -124,12 +124,12 @@ function Navbar() {
                 >
                   LOGIN
                 </Link>
-                <Link 
+                {/* <Link 
                   to="/register" 
                   className="navbar-item btn-secondary"
                 >
                   REGISTER
-                </Link>
+                </Link> */}
               </>
             )}
           </div>

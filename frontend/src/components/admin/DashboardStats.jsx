@@ -170,7 +170,7 @@ const DashboardStats = () => {
       <div className="bg-white p-6 rounded-lg shadow-md">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-lg font-semibold">Booking Terbaru</h2>
-          <Link to="/booking" className="text-blue-600 hover:text-blue-800 text-sm">
+          <Link to="/admin/dashboard/booking" className="text-blue-600 hover:text-blue-800 text-sm">
             Lihat Semua
           </Link>
         </div>

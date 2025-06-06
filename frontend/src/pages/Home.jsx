@@ -4,7 +4,6 @@ import '../assets/css/tq1-landing.css';
 import '../assets/js/tq1-scripts.js';
 import Navbar from '../components/Navbar';
 import ScheduleTable from '../components/ScheduleTable';
-import TestimonialSection from '../components/TestimonialSection';
 
 function Home() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -116,7 +115,7 @@ function Home() {
                   <h3 className="mb-1">Futsal Field A</h3>
                   <span className="field-price mb-3">Rp 150K/hour</span>
                   <p>Professional futsal field with high-quality artificial grass</p>
-                  <Link to="/booking" className="custom-btn bg-color mt-3">Book Now</Link>
+                  <Link to="/field/1" className="custom-btn bg-color mt-3">Book Now</Link>
                 </div>
               </div>
             </div>
@@ -128,7 +127,7 @@ function Home() {
                   <h3 className="mb-1">Futsal Field B</h3>
                   <span className="field-price mb-3">Rp 150K/hour</span>
                   <p>Professional futsal field with high-quality artificial grass</p>
-                  <Link to="/booking" className="custom-btn bg-color mt-3">Book Now</Link>
+                  <Link to="/field/2" className="custom-btn bg-color mt-3">Book Now</Link>
                 </div>
               </div>
             </div>
@@ -140,7 +139,7 @@ function Home() {
                   <h3 className="mb-1">Badminton Court</h3>
                   <span className="field-price mb-3">Rp 100K/hour</span>
                   <p>Indoor badminton court with professional flooring</p>
-                  <Link to="/booking" className="custom-btn bg-color mt-3">Book Now</Link>
+                  <Link to="/field/4" className="custom-btn bg-color mt-3">Book Now</Link>
                 </div>
               </div>
             </div>
@@ -164,9 +163,6 @@ function Home() {
         </div>
       </section>
 
-
-      {/* Testimonial Section */}
-      <TestimonialSection />
 
       {/* Membership Section */}
       <section className="feature section">

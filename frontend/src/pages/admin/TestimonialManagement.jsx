@@ -183,7 +183,7 @@ function TestimonialManagement() {
     <div>
       <div className="container-fluid px-4">
         <div className="d-flex justify-content-between align-items-center mb-4">
-          <h1 className="text-2xl font-bold text-gray-800">Manajemen Testimonial</h1>
+          <h1 className="text-2xl font-bold text-gray-800">Kritik dan Saran</h1>
         </div>
 
         
@@ -196,7 +196,7 @@ function TestimonialManagement() {
         <div className="card mb-4">
           <div className="card-header">
             <i className="fas fa-comments me-1"></i>
-            Daftar Testimonial
+            Daftar Kritik dan Saran
           </div>
           <div className="card-body">
             <div className="row mb-3">

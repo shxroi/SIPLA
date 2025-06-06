@@ -205,7 +205,7 @@ export const createTestimonial = async (req, res) => {
         const query = `
             INSERT INTO testimonial (
                 nama, email, pesan, lapangan_id, rating, status
-            ) VALUES ($1, $2, $3, $4, $5, $6)
+            ) VALUES ($1, $2, $3,   $4, $5, $6)
             RETURNING id, nama, email, pesan, lapangan_id, rating, status, created_at
         `;
         
