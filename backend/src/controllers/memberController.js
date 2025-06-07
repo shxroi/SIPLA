@@ -118,37 +118,72 @@ export const getMemberById = async (req, res) => {
 
 // Create member baru
 export const createMember = async (req, res) => {
+    const client = await pool.connect();
     try {
+        await client.query('BEGIN');
         console.log('Create member request body:', req.body);
         
         const { 
             nama, 
             no_telepon, 
-            email, 
-            tanggal_mulai, 
-            tanggal_selesai,
-            biaya_pendaftaran,
+            email,
+            password,
             lapangan_id,
-            tipe = 'bulutangkis',
+            tanggal_mulai, 
+            tanggal_berakhir,
+            jam_sewa = '19:00:00',
             status = 'aktif'
         } = req.body;
         
         // Validasi data wajib
-        if (!nama || !no_telepon) {
-            return res.status(400).json({ message: "Nama dan nomor telepon wajib diisi" });
+        if (!nama || !no_telepon || !password || !lapangan_id || !tanggal_mulai || !tanggal_berakhir) {
+            return res.status(400).json({ 
+                message: "Nama, nomor telepon, password, lapangan, dan periode membership wajib diisi" 
+            });
         }
         
-        // Pastikan biaya pendaftaran adalah angka
-        const biaya = parseInt(biaya_pendaftaran) || 0;
+        // Hash password
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        // Check if no_telepon already exists
+        const checkPhone = await client.query(
+            'SELECT id FROM member WHERE no_telepon = $1',
+            [no_telepon]
+        );
+
+        if (checkPhone.rows.length > 0) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({
+                message: "Nomor telepon sudah terdaftar"
+            });
+        }
         
-        // Pastikan lapangan_id adalah angka jika ada
-        const fieldId = lapangan_id ? parseInt(lapangan_id) : null;
+        // Validasi lapangan exists
+        const checkLapangan = await client.query(
+            'SELECT id FROM lapangan WHERE id = $1',
+            [lapangan_id]
+        );
+
+        if (checkLapangan.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({
+                message: "Lapangan tidak ditemukan"
+            });
+        }
         
         // Insert member
         const query = `
             INSERT INTO member (
-                nama, no_telepon, email, tanggal_mulai, tanggal_selesai, 
-                biaya_pendaftaran, tipe, status, lapangan_id
+                nama, 
+                no_telepon, 
+                email,
+                password,
+                lapangan_id,
+                tanggal_mulai,
+                tanggal_berakhir,
+                jam_sewa,
+                status
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             RETURNING id
         `;
@@ -156,25 +191,33 @@ export const createMember = async (req, res) => {
         const params = [
             nama, 
             no_telepon, 
-            email || null, 
-            tanggal_mulai, 
-            tanggal_selesai, 
-            biaya, 
-            tipe, 
-            status,
-            fieldId
+            email || null,
+            hashedPassword,
+            parseInt(lapangan_id),
+            tanggal_mulai,
+            tanggal_berakhir,
+            jam_sewa,
+            status
         ];
         
         console.log('Inserting member with params:', params);
-        const result = await pool.query(query, params);
+        const result = await client.query(query, params);
         
+        await client.query('COMMIT');
+
         res.status(201).json({ 
             message: "Member berhasil ditambahkan", 
             id: result.rows[0].id 
         });
     } catch (error) {
+        await client.query('ROLLBACK');
         console.error('Error in createMember:', error);
-        res.status(500).json({ message: `Terjadi kesalahan saat menambahkan member: ${error.message}` });
+        res.status(500).json({ 
+            message: "Terjadi kesalahan saat menambahkan member",
+            error: error.message 
+        });
+    } finally {
+        client.release();
     }
 };
 
@@ -189,10 +232,8 @@ export const updateMember = async (req, res) => {
             no_telepon, 
             email, 
             tanggal_mulai, 
-            tanggal_selesai,
-            biaya_pendaftaran,
+            tanggal_berakhir,
             lapangan_id,
-            tipe,
             status
         } = req.body;
         
@@ -200,9 +241,6 @@ export const updateMember = async (req, res) => {
         if (!id || isNaN(parseInt(id))) {
             return res.status(400).json({ message: "ID member tidak valid" });
         }
-        
-        // Pastikan biaya pendaftaran adalah angka jika ada
-        const biaya = biaya_pendaftaran ? parseInt(biaya_pendaftaran) : null;
         
         // Pastikan lapangan_id adalah angka jika ada
         const fieldId = lapangan_id ? parseInt(lapangan_id) : null;
@@ -215,8 +253,8 @@ export const updateMember = async (req, res) => {
                 no_telepon = COALESCE($2, no_telepon),
                 email = COALESCE($3, email),
                 tanggal_mulai = COALESCE($4, tanggal_mulai),
-                tanggal_selesai = COALESCE($5, tanggal_selesai),
-                biaya_pendaftaran = COALESCE($6, biaya_pendaftaran),
+                tanggal_berakhir = COALESCE($5, tanggal_berakhir),
+                lapangan_id = COALESCE($6, lapangan_id),
                 status = COALESCE($7, status),
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = $8
@@ -224,8 +262,14 @@ export const updateMember = async (req, res) => {
         `;
         
         const result = await pool.query(query, [
-            nama, no_telepon, email, tanggal_mulai, tanggal_selesai, 
-            biaya_pendaftaran, status, id
+            nama, 
+            no_telepon, 
+            email, 
+            tanggal_mulai, 
+            tanggal_berakhir,
+            lapangan_id ? parseInt(lapangan_id) : null,
+            status, 
+            id
         ]);
         
         if (result.rows.length === 0) {
@@ -271,7 +315,7 @@ export const deleteMember = async (req, res) => {
 export const extendMembership = async (req, res) => {
     try {
         const { id } = req.params;
-        const { tanggal_selesai, biaya_perpanjangan } = req.body;
+        const { tanggal_berakhir, biaya_perpanjangan } = req.body;
         
         // Get current member data
         const getMemberQuery = `
@@ -287,12 +331,12 @@ export const extendMembership = async (req, res) => {
         const member = memberResult.rows[0];
         
         // Validate new end date is after current end date
-        const currentEndDate = new Date(member.tanggal_selesai);
-        const newEndDate = new Date(tanggal_selesai);
+        const currentEndDate = new Date(member.tanggal_berakhir);
+        const newEndDate = new Date(tanggal_berakhir);
         
         if (newEndDate <= currentEndDate) {
             return res.status(400).json({ 
-                message: "Tanggal selesai baru harus setelah tanggal selesai saat ini" 
+                message: "Tanggal berakhir baru harus setelah tanggal berakhir saat ini" 
             });
         }
         
@@ -300,14 +344,14 @@ export const extendMembership = async (req, res) => {
         const updateQuery = `
             UPDATE member
             SET 
-                tanggal_selesai = $1,
+                tanggal_berakhir = $1,
                 status = 'aktif',
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = $2
             RETURNING *
         `;
         
-        const updateResult = await pool.query(updateQuery, [tanggal_selesai, id]);
+        const updateResult = await pool.query(updateQuery, [tanggal_berakhir, id]);
         
         // Record perpanjangan in history
         const historyQuery = `
@@ -320,7 +364,7 @@ export const extendMembership = async (req, res) => {
             )
         `;
         
-        const keterangan = `Perpanjangan membership dari ${member.tanggal_selesai} hingga ${tanggal_selesai}`;
+        const keterangan = `Perpanjangan membership dari ${member.tanggal_berakhir} hingga ${tanggal_berakhir}`;
         
         await pool.query(historyQuery, [
             id, biaya_perpanjangan, keterangan
@@ -378,10 +422,10 @@ export const registerMember = async (req, res) => {
             password,
             lapangan_id,
             tanggal_mulai,
-            tanggal_selesai,
-            jam_mulai,
-            jam_selesai,
-            biaya_pendaftaran = 0
+            tanggal_berakhir    ,   
+            jam_sewa,
+            status = 'aktif',
+            jenis_membership = 'bulanan'
         } = req.body;
         
         // Validasi data wajib
@@ -409,8 +453,8 @@ export const registerMember = async (req, res) => {
             startDate = new Date();
         }
         
-        if (tanggal_selesai) {
-            endDate = new Date(tanggal_selesai);
+        if (tanggal_berakhir) {
+            endDate = new Date(tanggal_berakhir);
         } else {
             endDate = new Date(startDate);
             endDate.setMonth(endDate.getMonth() + 1);
@@ -425,25 +469,38 @@ export const registerMember = async (req, res) => {
         // Insert member
         const query = `
             INSERT INTO member (
-                nama, no_telepon, email, password, tanggal_mulai, tanggal_selesai, 
-                biaya_pendaftaran, tipe, status, lapangan_id, jam_mulai, jam_selesai
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-            RETURNING id, nama, no_telepon, tanggal_mulai, tanggal_selesai, status, jam_mulai, jam_selesai
+                nama, 
+                no_telepon, 
+                password, 
+                lapangan_id, 
+                tanggal_mulai, 
+                tanggal_berakhir,
+                jam_sewa, 
+                status, 
+                jenis_membership,
+                created_at,
+                updated_at,
+                email
+            ) VALUES (
+                $1, $2, $3, $4, $5, $6, $7, $8, $9,
+                CURRENT_TIMESTAMP,
+                CURRENT_TIMESTAMP,
+                $10
+            )
+            RETURNING *
         `;
         
         const result = await pool.query(query, [
             nama, 
-            no_telepon, 
-            generatedEmail, 
+            no_telepon,
             hashedPassword,
-            formattedStartDate, 
-            formattedEndDate, 
-            biaya_pendaftaran, 
-            'bulutangkis', 
-            'aktif', 
             lapangan_id,
-            jam_mulai,
-            jam_selesai
+            formattedStartDate, 
+            formattedEndDate,
+            jam_sewa,
+            status,
+            jenis_membership,
+            generatedEmail
         ]);
         
         const member = result.rows[0];
@@ -474,7 +531,7 @@ export const loginMember = async (req, res) => {
         
         // Query untuk mencari member berdasarkan nomor telepon
         const query = `
-            SELECT id, nama, email, password, no_telepon, tanggal_mulai, tanggal_selesai, status, jam_mulai, jam_selesai
+            SELECT id, nama, email, password, no_telepon, tanggal_mulai, tanggal_berakhir, status, jam_mulai, jam_berakhir
             FROM member 
             WHERE no_telepon = $1
         `;
@@ -502,7 +559,7 @@ export const loginMember = async (req, res) => {
         
         // Cek apakah membership sudah berakhir
         const today = new Date();
-        const endDate = new Date(member.tanggal_selesai);
+        const endDate = new Date(member.tanggal_berakhir);
         
         if (today > endDate) {
             // Update status member menjadi tidak aktif
@@ -541,7 +598,7 @@ export const checkMemberAvailability = async (req, res) => {
         
         // Query untuk mendapatkan semua booking pada tanggal tersebut
         const result = await pool.query(`
-            SELECT jam_mulai, jam_selesai 
+            SELECT jam_mulai, jam_berakhir 
             FROM booking 
             WHERE lapangan_id = $1 
             AND tanggal = $2
@@ -552,7 +609,7 @@ export const checkMemberAvailability = async (req, res) => {
         const waktuSewa = await pool.query(`
             SELECT json_agg(json_build_object(
                 'jam_mulai', jam_mulai,
-                'jam_selesai', jam_selesai,
+                'jam_berakhir', jam_berakhir,
                 'harga', harga
             )) as waktu_sewa
             FROM waktu_sewa
@@ -583,7 +640,7 @@ export const getMemberProfile = async (req, res) => {
         const memberId = req.user.id;
         
         const query = `
-            SELECT m.id, m.nama, m.email, m.no_telepon, m.tanggal_mulai, m.tanggal_selesai, 
+            SELECT m.id, m.nama, m.email, m.no_telepon, m.tanggal_mulai, m.tanggal_berakhir, 
                    m.status, m.tipe, l.nama as lapangan_nama, l.tipe as lapangan_tipe
             FROM member m
             LEFT JOIN lapangan l ON m.lapangan_id = l.id
@@ -679,7 +736,7 @@ export const updateMemberProfile = async (req, res) => {
             UPDATE member
             SET ${updateFields.join(', ')}
             WHERE id = $${paramCounter}
-            RETURNING id, nama, email, no_telepon, tanggal_mulai, tanggal_selesai, status
+            RETURNING id, nama, email, no_telepon, tanggal_mulai, tanggal_berakhir, status
         `;
         
         const updateResult = await pool.query(updateQuery, params);

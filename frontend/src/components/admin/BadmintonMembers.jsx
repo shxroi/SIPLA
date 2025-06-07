@@ -8,14 +8,18 @@ const BadmintonMembers = () => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [formError, setFormError] = useState('');
   const [formData, setFormData] = useState({
     nama: '',
     no_telepon: '',
     email: '',
+    password: '', // For new members only
     lapangan_id: '',
-    tanggal_mulai: '',
-    tanggal_selesai: '',
-    biaya_pendaftaran: 0,
+    tanggal_mulai: new Date().toISOString().split('T')[0],
+    tanggal_berakhir: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0],
+    jam_mulai: '19:00',
+    jam_selesai: '21:00',
+    tipe: 'bulutangkis',
     status: 'aktif'
   });
 
@@ -88,40 +92,102 @@ const BadmintonMembers = () => {
       nama: '',
       no_telepon: '',
       email: '',
+      password: '', // Reset password field
       lapangan_id: '',
-      tanggal_mulai: '',
-      tanggal_selesai: '',
-      biaya_pendaftaran: 0,
+      tanggal_mulai: new Date().toISOString().split('T')[0],
+      tanggal_berakhir: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0],
+      jam_mulai: '19:00',
+      jam_selesai: '21:00',
+      tipe: 'bulutangkis',
       status: 'aktif'
     });
     setEditingId(null);
+    setFormError('');
   };
 
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setFormError('');
     
     try {
       const { token } = JSON.parse(localStorage.getItem('adminUser') || '{}');
       
-      // Pastikan format data sesuai dengan yang diharapkan API
-      const memberData = {
+      // Prepare member data
+      let memberData = {
         ...formData,
-        biaya_pendaftaran: parseInt(formData.biaya_pendaftaran),
         lapangan_id: formData.lapangan_id ? parseInt(formData.lapangan_id) : null,
-        tipe: 'bulutangkis' // Pastikan tipe diisi
+        tipe: 'bulutangkis'
       };
+
+      // Format phone number if needed
+      const phoneNumber = memberData.no_telepon.startsWith('0') ? 
+        memberData.no_telepon.slice(1) : 
+        memberData.no_telepon;
+      memberData.no_telepon = phoneNumber;
       
-      console.log('Sending member data:', memberData);
-      
+      // Validate required fields
+      if (!memberData.nama || !memberData.no_telepon || !memberData.lapangan_id || 
+          !memberData.tanggal_mulai || !memberData.tanggal_berakhir || 
+          !memberData.jam_mulai || !memberData.jam_selesai) {
+        setFormError('Mohon lengkapi semua field yang wajib diisi');
+        return;
+      }
+
+      // Validate phone number format
+      const phoneRegex = /^[0-9]{10,13}$/;
+      if (!phoneRegex.test(phoneNumber)) {
+        setFormError('Format nomor telepon tidak valid');
+        return;
+      }
+
+      // Validate membership dates
+      const startDate = new Date(memberData.tanggal_mulai);
+      const endDate = new Date(memberData.tanggal_berakhir);
+      if (startDate >= endDate) {
+        setFormError('Tanggal berakhir harus lebih besar dari tanggal mulai');
+        return;
+      }
+
+      // Validate time slots
+      const startTime = memberData.jam_mulai.split(':').map(Number);
+      const endTime = memberData.jam_selesai.split(':').map(Number);
+      if (startTime[0] > endTime[0] || (startTime[0] === endTime[0] && startTime[1] >= endTime[1])) {
+        setFormError('Jam selesai harus lebih besar dari jam mulai');
+        return;
+      }
+
+      // Auto-generate email if not provided
+      if (!memberData.email) {
+        memberData.email = `member_${phoneNumber}@tq1sports.com`;
+      } else {
+        // Validate email format if provided
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(memberData.email)) {
+          setFormError('Format email tidak valid');
+          return;
+        }
+      }
+
       if (editingId) {
-        // Update existing member
-        await axios.put(`http://localhost:3000/api/member/${editingId}`, memberData, {
+        // Update existing member (exclude password)
+        const { password, ...updateData } = memberData;
+        await axios.put(`http://localhost:3000/api/member/${editingId}`, updateData, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         });
       } else {
+        // For new member, password is required
+        if (!memberData.password) {
+          setFormError('Password wajib diisi untuk member baru');
+          return;
+        }
+        if (memberData.password.length < 6) {
+          setFormError('Password minimal 6 karakter');
+          return;
+        }
+        
         // Create new member
         await axios.post('http://localhost:3000/api/member', memberData, {
           headers: {
@@ -139,7 +205,8 @@ const BadmintonMembers = () => {
       
     } catch (error) {
       console.error('Error saving member:', error);
-      alert('Terjadi kesalahan saat menyimpan data member: ' + (error.response?.data?.message || error.message));
+      const errorMessage = error.response?.data?.message || error.message;
+      setFormError(errorMessage);
     }
   };
 
@@ -153,8 +220,9 @@ const BadmintonMembers = () => {
       email: member.email || '',
       lapangan_id: member.lapangan_id,
       tanggal_mulai: member.tanggal_mulai,
-      tanggal_selesai: member.tanggal_selesai || member.tanggal_berakhir,
-      biaya_pendaftaran: member.biaya_pendaftaran || 0,
+      tanggal_berakhir: member.tanggal_berakhir || member.tanggal_berakhir,
+      jam_mulai: member.jam_mulai || '19:00',
+      jam_selesai: member.jam_selesai || '21:00',
       status: member.status || 'aktif'
     });
     
@@ -191,7 +259,7 @@ const BadmintonMembers = () => {
       const { token } = JSON.parse(localStorage.getItem('adminUser') || '{}');
       
       // Hitung tanggal berakhir baru (1 bulan dari tanggal berakhir saat ini)
-      const currentEndDate = new Date(member.tanggal_selesai || member.tanggal_berakhir);
+      const currentEndDate = new Date(member.tanggal_berakhir || member.tanggal_berakhir);
       const newEndDate = new Date(currentEndDate);
       newEndDate.setMonth(newEndDate.getMonth() + 1);
       
@@ -200,7 +268,7 @@ const BadmintonMembers = () => {
       // Update member dengan tanggal berakhir baru
       await axios.put(`http://localhost:3000/api/member/${member.id}`, {
         ...member,
-        tanggal_selesai: formattedNewEndDate
+        tanggal_berakhir: formattedNewEndDate
       }, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -264,6 +332,11 @@ const BadmintonMembers = () => {
           <h3 className="text-lg font-medium mb-4">
             {editingId ? 'Edit Member Bulutangkis' : 'Tambah Member Bulutangkis'}
           </h3>
+          {formError && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-md">
+              {formError}
+            </div>
+          )}
           <form onSubmit={handleSubmit}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
@@ -288,6 +361,7 @@ const BadmintonMembers = () => {
                   onChange={handleInputChange}
                   required
                 />
+                <p className="mt-1 text-sm text-gray-500">Format: 10-13 digit angka</p>
               </div>
               
               <div>
@@ -342,33 +416,70 @@ const BadmintonMembers = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   value={formData.email}
                   onChange={handleInputChange}
+                  placeholder="email@example.com"
                 />
+                <p className="mt-1 text-sm text-gray-500">Opsional. Akan di-generate otomatis jika kosong.</p>
               </div>
+
+              {!editingId && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                  <input 
+                    type="password" 
+                    name="password"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    placeholder="Minimal 6 karakter"
+                    minLength="6"
+                    required={!editingId}
+                  />
+                  <p className="mt-1 text-sm text-gray-500">Minimal 6 karakter. Hanya untuk member baru.</p>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Selesai</label>
                 <input 
                   type="date" 
-                  name="tanggal_selesai"
+                  name="tanggal_berakhir"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  value={formData.tanggal_selesai}
+                  value={formData.tanggal_berakhir}
                   onChange={handleInputChange}
                   required
                 />
               </div>
-              
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Biaya Pendaftaran</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Jam Mulai</label>
                 <input 
-                  type="number" 
-                  name="biaya_pendaftaran"
+                  type="time" 
+                  name="jam_mulai"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  value={formData.biaya_pendaftaran}
+                  value={formData.jam_mulai}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Jam Selesai</label>
+                <input 
+                  type="time" 
+                  name="jam_selesai"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  value={formData.jam_selesai}
                   onChange={handleInputChange}
                   required
                 />
               </div>
             </div>
+            
+            {formError && (
+              <div className="mb-4 text-red-600 text-sm">
+                {formError}
+              </div>
+            )}
             
             <div className="mt-6 flex justify-end">
               <button 
@@ -404,10 +515,11 @@ const BadmintonMembers = () => {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No. Telepon</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lapangan</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jam Main</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal Mulai</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal Selesai</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
               </tr>
@@ -415,7 +527,7 @@ const BadmintonMembers = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {members.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="px-6 py-4 text-center text-sm text-gray-500">
+                  <td colSpan="9" className="px-6 py-4 text-center text-sm text-gray-500">
                     Tidak ada data member bulutangkis.
                   </td>
                 </tr>
@@ -424,35 +536,40 @@ const BadmintonMembers = () => {
                   <tr key={member.id}>
                     <td className="px-6 py-4 whitespace-nowrap">{member.nama}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{member.no_telepon}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {member.email || `member_${member.no_telepon}@tq1sports.com`}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">{getLapanganName(member.lapangan_id)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{member.jam_mulai} - {member.jam_selesai}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{formatDate(member.tanggal_mulai)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{formatDate(member.tanggal_selesai || member.tanggal_berakhir)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{member.email || '-'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {formatDate(member.tanggal_berakhir || member.tanggal_berakhir)}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
                         ${member.status === 'aktif' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                         {member.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium flex items-center">
                       <button 
                         className="text-indigo-600 hover:text-indigo-900 mr-2"
                         onClick={() => handleEdit(member)}
-                        title="Edit"
+                        title="Edit member"
                       >
                         <FiEdit />
                       </button>
                       <button 
                         className="text-green-600 hover:text-green-900 mr-2"
                         onClick={() => handlePerpanjangan(member)}
-                        title="Perpanjang"
+                        title="Perpanjang membership"
                       >
                         <FiRefreshCw />
                       </button>
                       <button 
                         className="text-red-600 hover:text-red-900"
                         onClick={() => handleDelete(member.id)}
-                        title="Hapus"
+                        title="Hapus member"
                       >
                         <FiTrash2 />
                       </button>

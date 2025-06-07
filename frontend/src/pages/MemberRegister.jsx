@@ -20,21 +20,22 @@ function MemberRegister() {
     confirm_password: '',
     lapangan_id: bookingData?.fieldId || '',
     tanggal_mulai: today.toISOString().split('T')[0],
-    tanggal_selesai: nextMonth.toISOString().split('T')[0],
-    jam_mulai: '08:00',
-    jam_selesai: '10:00'
+    tanggal_berakhir: nextMonth.toISOString().split('T')[0],
+    jam_sewa: '19:00',
+    status: 'aktif',
+    jenis_membership: 'bulanan'
   });
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [badmintonFields, setBadmintonFields] = useState([]);
   const [timeSlots, setTimeSlots] = useState([
-    { jam_mulai: '08:00', jam_selesai: '10:00' },
-    { jam_mulai: '10:00', jam_selesai: '12:00' },
-    { jam_mulai: '13:00', jam_selesai: '15:00' },
-    { jam_mulai: '15:00', jam_selesai: '17:00' },
-    { jam_mulai: '17:00', jam_selesai: '19:00' },
-    { jam_mulai: '19:00', jam_selesai: '21:00' }
+    '08:00',
+    '10:00',
+    '13:00',
+    '15:00',
+    '17:00',
+    '19:00'
   ]);
   const [activeStep, setActiveStep] = useState(1);
   
@@ -77,8 +78,23 @@ function MemberRegister() {
         return;
       }
       
+      if (formData.password.length < 6) {
+        setError('Password minimal 6 karakter');
+        return;
+      }
+      
       if (formData.password !== formData.confirm_password) {
         setError('Password dan konfirmasi password tidak sama');
+        return;
+      }
+      
+      // Validate phone number format
+      const phoneRegex = /^[0-9]{10,13}$/;
+      const phoneNumber = formData.no_telepon.startsWith('0') ? 
+        formData.no_telepon.slice(1) : formData.no_telepon;
+      
+      if (!phoneRegex.test(phoneNumber)) {
+        setError('Format nomor telepon tidak valid');
         return;
       }
       
@@ -96,20 +112,36 @@ function MemberRegister() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    
-    try {
+     try {
+      // Validasi data
+      if (!formData.nama || !formData.no_telepon || !formData.password || !formData.lapangan_id || 
+          !formData.tanggal_mulai || !formData.tanggal_berakhir || !formData.jam_sewa) {
+        throw new Error('Mohon lengkapi semua field yang wajib diisi');
+      }
+
+      // Validate password match
+      if (formData.password !== formData.confirm_password) {
+        throw new Error('Password dan konfirmasi password tidak sama');
+      }
+
+      // Format nomor telepon
+      const phoneNumber = formData.no_telepon.startsWith('0') ? 
+        formData.no_telepon.replace('0', '') : 
+        formData.no_telepon;
+
       // Kirim data registrasi
       const response = await axios.post('http://localhost:3000/api/member/register', {
         nama: formData.nama,
-        no_telepon: formData.no_telepon,
+        no_telepon: phoneNumber,
         password: formData.password,
-        lapangan_id: formData.lapangan_id,
+        lapangan_id: parseInt(formData.lapangan_id),
         tanggal_mulai: formData.tanggal_mulai,
-        tanggal_selesai: formData.tanggal_selesai,
-        jam_mulai: formData.jam_mulai,
-        jam_selesai: formData.jam_selesai
+        tanggal_berakhir: formData.tanggal_berakhir,
+        jam_sewa: `${formData.jam_sewa}:00`, // Add seconds for proper time format
+        status: 'aktif',
+        jenis_membership: 'bulanan'
       });
-      
+
       // Simpan token dan data member ke localStorage
       localStorage.setItem('memberToken', response.data.token);
       localStorage.setItem('memberUser', JSON.stringify(response.data.member));
@@ -128,12 +160,16 @@ function MemberRegister() {
     }
   };
   
-  const handleTimeSlotSelect = (slot) => {
+  const handleTimeSlotSelect = (time) => {
     setFormData(prev => ({
       ...prev,
-      jam_mulai: slot.jam_mulai,
-      jam_selesai: slot.jam_selesai
+      jam_sewa: time
     }));
+    
+    // Reset error if it was related to time slot
+    if (error?.includes('jam')) {
+      setError(null);
+    }
   };
   
   return (
@@ -173,205 +209,222 @@ function MemberRegister() {
                 </div>
               )}
               
-              {activeStep === 1 ? (
-                /* Step 1: Personal Information */
-                <div>
-                  <div className="mb-4">
-                    <label className="block text-gray-700 text-sm font-medium mb-2" htmlFor="nama">
-                      Nama Lengkap
-                    </label>
-                    <input
-                      id="nama"
-                      name="nama"
-                      type="text"
-                      value={formData.nama}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Masukkan nama lengkap"
-                    />
-                  </div>
-                  
-                  <div className="mb-4">
-                    <label className="block text-gray-700 text-sm font-medium mb-2" htmlFor="no_telepon">
-                      Nomor Telepon
-                    </label>
-                    <div className="flex">
-                      <div className="bg-gray-100 border border-gray-300 border-r-0 rounded-l-md px-3 py-2 text-gray-500">
-                        +62
-                      </div>
-                      <input
-                        id="no_telepon"
-                        name="no_telepon"
-                        type="tel"
-                        value={formData.no_telepon}
-                        onChange={handleChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-r-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="8123456789"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="mb-4">
-                    <label className="block text-gray-700 text-sm font-medium mb-2" htmlFor="password">
-                      Password
-                    </label>
-                    <input
-                      id="password"
-                      name="password"
-                      type="password"
-                      value={formData.password}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Masukkan password"
-                      minLength="6"
-                    />
-                  </div>
-                  
-                  <div className="mb-6">
-                    <label className="block text-gray-700 text-sm font-medium mb-2" htmlFor="confirm_password">
-                      Konfirmasi Password
-                    </label>
-                    <input
-                      id="confirm_password"
-                      name="confirm_password"
-                      type="password"
-                      value={formData.confirm_password}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Konfirmasi password"
-                      minLength="6"
-                    />
-                  </div>
-                  
-                  <div className="mb-6">
-                    <div className="flex items-center">
-                      <input
-                        id="terms"
-                        type="checkbox"
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      />
-                      <label htmlFor="terms" className="ml-2 block text-sm text-gray-600">
-                        Saya menyetujui <a href="#" className="text-blue-600 hover:underline">Syarat dan Ketentuan</a>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {activeStep === 1 ? (
+                  <div className="space-y-4">
+                    {/* Step 1: Personal Information */}
+                    <div>
+                      <label className="block text-gray-700 text-sm font-medium mb-2" htmlFor="nama">
+                        Nama Lengkap *
                       </label>
+                      <input
+                        id="nama"
+                        name="nama"
+                        type="text"
+                        value={formData.nama}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Masukkan nama lengkap"
+                        required
+                      />
                     </div>
-                  </div>
-                  
-                  <button
-                    type="button"
-                    onClick={handleNextStep}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition duration-300"
-                  >
-                    Lanjutkan
-                  </button>
-                  
-                  <div className="mt-6 text-center">
-                    <p className="text-sm text-gray-600">
-                      Sudah memiliki akun? {' '}
-                      <Link to="/member/login" className="text-blue-600 hover:underline">
-                        Login di sini
-                      </Link>
-                    </p>
-                  </div>
-                  
-                  <div className="mt-6 flex justify-center space-x-2">
-                    <div className="h-2 w-2 rounded-full bg-blue-600"></div>
-                    <div className="h-2 w-2 rounded-full bg-gray-300"></div>
-                  </div>
-                </div>
-              ) : (
-                /* Step 2: Membership Details */
-                <div>
-                  <div className="mb-4">
-                    <label className="block text-gray-700 text-sm font-medium mb-2" htmlFor="lapangan_id">
-                      Pilih Lapangan Bulutangkis
-                    </label>
-                    <select
-                      id="lapangan_id"
-                      name="lapangan_id"
-                      value={formData.lapangan_id}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Pilih Lapangan</option>
-                      {badmintonFields.map(field => (
-                        <option key={field.id} value={field.id}>
-                          {field.nama}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  <div className="mb-4">
-                    <label className="block text-gray-700 text-sm font-medium mb-2">
-                      Periode Membership
-                    </label>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-gray-600 text-xs mb-1" htmlFor="tanggal_mulai">Tanggal Mulai</label>
-                        <input
-                          id="tanggal_mulai"
-                          name="tanggal_mulai"
-                          type="date"
-                          value={formData.tanggal_mulai}
-                          onChange={handleChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-gray-600 text-xs mb-1" htmlFor="tanggal_selesai">Tanggal Selesai</label>
-                        <input
-                          id="tanggal_selesai"
-                          name="tanggal_selesai"
-                          type="date"
-                          value={formData.tanggal_selesai}
-                          onChange={handleChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="mb-6">
-                    <label className="block text-gray-700 text-sm font-medium mb-2">
-                      Pilih Jam Bermain Reguler
-                    </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                      {timeSlots.map((slot, index) => (
-                        <div
-                          key={index}
-                          onClick={() => handleTimeSlotSelect(slot)}
-                          className={`p-3 rounded-md border cursor-pointer text-center ${formData.jam_mulai === slot.jam_mulai ? 'bg-blue-50 border-blue-500' : 'border-gray-200 hover:border-blue-300'}`}
-                        >
-                          <span className="block text-sm">{slot.jam_mulai} - {slot.jam_selesai}</span>
+
+                    <div>
+                      <label className="block text-gray-700 text-sm font-medium mb-2" htmlFor="no_telepon">
+                        Nomor Telepon *
+                      </label>
+                      <div className="flex">
+                        <div className="bg-gray-100 border border-gray-300 border-r-0 rounded-l-md px-3 py-2 text-gray-500">
+                          +62
                         </div>
-                      ))}
+                        <input
+                          id="no_telepon"
+                          name="no_telepon"
+                          type="tel"
+                          value={formData.no_telepon}
+                          onChange={handleChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-r-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="8123456789"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-700 text-sm font-medium mb-2" htmlFor="password">
+                        Password *
+                      </label>
+                      <input
+                        id="password"
+                        name="password"
+                        type="password"
+                        value={formData.password}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Masukkan password"
+                        required
+                        minLength="6"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-700 text-sm font-medium mb-2" htmlFor="confirm_password">
+                        Konfirmasi Password *
+                      </label>
+                      <input
+                        id="confirm_password"
+                        name="confirm_password"
+                        type="password"
+                        value={formData.confirm_password}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Konfirmasi password"
+                        required
+                        minLength="6"
+                      />
+                    </div>
+
+                    <div className="mt-6">
+                      <div className="flex items-center">
+                        <input
+                          id="terms"
+                          type="checkbox"
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          required
+                        />
+                        <label htmlFor="terms" className="ml-2 block text-sm text-gray-600">
+                          Saya menyetujui <a href="#" className="text-blue-600 hover:underline">Syarat dan Ketentuan</a>
+                        </label>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleNextStep}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition duration-300"
+                    >
+                      Lanjutkan
+                    </button>
+
+                    <div className="mt-6 text-center">
+                      <p className="text-sm text-gray-600">
+                        Sudah memiliki akun?{' '}
+                        <Link to="/member/login" className="text-blue-600 hover:underline">
+                          Login di sini
+                        </Link>
+                      </p>
+                    </div>
+
+                    <div className="mt-6 flex justify-center space-x-2">
+                      <div className="h-2 w-2 rounded-full bg-blue-600"></div>
+                      <div className="h-2 w-2 rounded-full bg-gray-300"></div>
                     </div>
                   </div>
-                  
-                  <div className="flex space-x-4">
-                    <button
-                      type="button"
-                      onClick={handlePrevStep}
-                      className="w-1/2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-md transition duration-300"
-                    >
-                      Kembali
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSubmit}
-                      disabled={loading}
-                      className={`w-1/2 font-medium py-2 px-4 rounded-md transition duration-300 ${loading ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
-                    >
-                      {loading ? 'Memproses...' : 'Daftar Sekarang'}
-                    </button>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Step 2: Membership Details */}
+                    <div className="mb-4">
+                      <label className="block text-gray-700 text-sm font-medium mb-2" htmlFor="lapangan_id">
+                        Pilih Lapangan Bulutangkis *
+                      </label>
+                      <select
+                        id="lapangan_id"
+                        name="lapangan_id"
+                        value={formData.lapangan_id}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                      >
+                        <option value="">Pilih Lapangan</option>
+                        {badmintonFields.map(field => (
+                          <option key={field.id} value={field.id}>
+                            {field.nama}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="mb-4">
+                      <label className="block text-gray-700 text-sm font-medium mb-2">
+                        Periode Membership
+                      </label>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-gray-600 text-xs mb-1" htmlFor="tanggal_mulai">
+                            Tanggal Mulai *
+                          </label>
+                          <input
+                            id="tanggal_mulai"
+                            name="tanggal_mulai"
+                            type="date"
+                            value={formData.tanggal_mulai}
+                            onChange={handleChange}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-gray-600 text-xs mb-1" htmlFor="tanggal_berakhir">
+                            Tanggal Berakhir *
+                          </label>
+                          <input
+                            id="tanggal_berakhir"
+                            name="tanggal_berakhir"
+                            type="date"
+                            value={formData.tanggal_berakhir}
+                            onChange={handleChange}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mb-6">
+                      <label className="block text-gray-700 text-sm font-medium mb-2">
+                        Pilih Jam Bermain Reguler *
+                      </label>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {timeSlots.map((time, index) => (
+                          <div
+                            key={index}
+                            onClick={() => handleTimeSlotSelect(time)}
+                            className={`p-3 rounded-md border cursor-pointer text-center ${
+                              formData.jam_sewa === time ? 'bg-blue-50 border-blue-500' : 'border-gray-200 hover:border-blue-300'
+                            }`}
+                          >
+                            <span className="block text-sm">{time}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex space-x-4">
+                      <button
+                        type="button"
+                        onClick={handlePrevStep}
+                        className="w-1/2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-md transition duration-300"
+                      >
+                        Kembali
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className={`w-1/2 font-medium py-2 px-4 rounded-md transition duration-300 ${
+                          loading ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'
+                        }`}
+                      >
+                        {loading ? 'Memproses...' : 'Daftar Sekarang'}
+                      </button>
+                    </div>
+
+                    <div className="mt-6 flex justify-center space-x-2">
+                      <div className="h-2 w-2 rounded-full bg-gray-300"></div>
+                      <div className="h-2 w-2 rounded-full bg-blue-600"></div>
+                    </div>
                   </div>
-                  
-                  <div className="mt-6 flex justify-center space-x-2">
-                    <div className="h-2 w-2 rounded-full bg-gray-300"></div>
-                    <div className="h-2 w-2 rounded-full bg-blue-600"></div>
-                  </div>
-                </div>
-              )}
+                )}
+              </form>
             </div>
           </div>
         </div>

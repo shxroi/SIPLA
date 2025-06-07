@@ -1,7 +1,11 @@
 import pool from '../config/database.js';
 import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
 
-const JWT_SECRET = 'your-secret-key'; // Sebaiknya simpan di environment variable
+// Load environment variables
+dotenv.config();
+
+const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || 'admin_secret_key';
 
 export const login = async (req, res) => {
     try {
@@ -20,8 +24,8 @@ export const login = async (req, res) => {
         
         // Generate token
         const token = jwt.sign(
-            { id: user.id, username: user.username },
-            JWT_SECRET,
+            { id: user.id, username: user.username, role: 'admin' },
+            ADMIN_JWT_SECRET,
             { expiresIn: '24h' }
         );
 
