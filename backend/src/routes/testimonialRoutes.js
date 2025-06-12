@@ -10,7 +10,7 @@ import {
     updateTestimonialStatus,
     deleteTestimonial
 } from '../controllers/testimonialController.js';
-import { isAuthenticated } from '../middleware/auth.js';
+import { isAdminAuthenticated } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -21,8 +21,8 @@ router.get('/field/:lapanganId/rating', getAverageRatingByField);
 router.post('/', createTestimonial);
 
 // Admin routes
-router.get('/admin', isAuthenticated, getAllTestimonialsAdmin);
-router.patch('/admin/:id/status', isAuthenticated, updateTestimonialStatus);
-router.delete('/admin/:id', isAuthenticated, deleteTestimonial);
+router.get('/admin', isAdminAuthenticated, getAllTestimonialsAdmin);
+router.patch('/admin/:id/status', isAdminAuthenticated, updateTestimonialStatus);
+router.delete('/admin/:id', isAdminAuthenticated, deleteTestimonial);
 
 export default router;

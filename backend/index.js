@@ -9,6 +9,7 @@ import bookingRoutes from './src/routes/bookingRoutes.js';
 import memberRoutes from './src/routes/memberRoutes.js';
 import dashboardRoutes from './src/routes/dashboardRoutes.js';
 import testimonialRoutes from './src/routes/testimonialRoutes.js';
+import adminMemberRoutes from './src/routes/AdminMemberRoutes.js';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import path from 'path';
@@ -50,6 +51,7 @@ app.use('/api/booking', bookingRoutes);
 app.use('/api/member', memberRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/testimonial', testimonialRoutes);
+app.use('/api/admin/member', adminMemberRoutes);
 
 // Test route
 app.get('/api/test', (req, res) => {

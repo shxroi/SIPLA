@@ -1,5 +1,3 @@
-// memberController.js
-
 import pool from '../config/database.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
@@ -7,7 +5,7 @@ import bcrypt from 'bcrypt';
 // Fungsi untuk membuat token JWT
 const generateToken = (member) => {
     return jwt.sign(
-        { id: member.id, no_telepon: member.no_telepon, role: 'member' },
+        { id: member.id, email: member.email, role: 'member' },
         process.env.JWT_SECRET || 'secret_key',
         { expiresIn: '7d' }
     );
@@ -25,23 +23,20 @@ export const getAllMembers = async (req, res) => {
         
         const offset = (page - 1) * limit;
         let params = [];
-        let whereClause = [];
+        let whereClause = ["l.tipe = 'bulutangkis'"];
         let paramCounter = 1;
         
         // Filter berdasarkan status
         if (status) {
             whereClause.push(`m.status = $${paramCounter++}`);
             params.push(status);
-        } else {
-            // Default menampilkan member aktif
-            whereClause.push(`m.status = 'aktif'`);
         }
         
         // Filter berdasarkan search
         if (search) {
             whereClause.push(`(
                 m.nama ILIKE $${paramCounter} OR 
-                m.no_telepon ILIKE $${paramCounter}
+                m.email ILIKE $${paramCounter}
             )`);
             params.push(`%${search}%`);
             paramCounter++;
@@ -136,9 +131,9 @@ export const createMember = async (req, res) => {
         } = req.body;
         
         // Validasi data wajib
-        if (!nama || !no_telepon || !password || !lapangan_id || !tanggal_mulai || !tanggal_berakhir) {
+        if (!nama || !email || !password || !lapangan_id || !tanggal_mulai || !tanggal_berakhir) {
             return res.status(400).json({ 
-                message: "Nama, nomor telepon, password, lapangan, dan periode membership wajib diisi" 
+                message: "Nama, email, password, lapangan, dan periode membership wajib diisi" 
             });
         }
         
@@ -146,16 +141,16 @@ export const createMember = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        // Check if no_telepon already exists
-        const checkPhone = await client.query(
-            'SELECT id FROM member WHERE no_telepon = $1',
-            [no_telepon]
+        // Check if email already exists
+        const checkEmail = await client.query(
+            'SELECT id FROM member WHERE email = $1',
+            [email]
         );
 
-        if (checkPhone.rows.length > 0) {
+        if (checkEmail.rows.length > 0) {
             await client.query('ROLLBACK');
             return res.status(400).json({
-                message: "Nomor telepon sudah terdaftar"
+                message: "Email sudah terdaftar"
             });
         }
         
@@ -190,8 +185,8 @@ export const createMember = async (req, res) => {
         
         const params = [
             nama, 
-            no_telepon, 
-            email || null,
+            no_telepon || null,
+            email,
             hashedPassword,
             parseInt(lapangan_id),
             tanggal_mulai,
@@ -245,6 +240,17 @@ export const updateMember = async (req, res) => {
         // Pastikan lapangan_id adalah angka jika ada
         const fieldId = lapangan_id ? parseInt(lapangan_id) : null;
         
+        // Check if email is already used by another member
+        if (email) {
+            const emailCheck = await pool.query(
+                'SELECT id FROM member WHERE email = $1 AND id != $2',
+                [email, id]
+            );
+            if (emailCheck.rows.length > 0) {
+                return res.status(400, { message: "Email sudah digunakan oleh member lain" });
+            }
+        }
+
         // Update member
         const query = `
             UPDATE member
@@ -419,26 +425,27 @@ export const registerMember = async (req, res) => {
         const { 
             nama, 
             no_telepon, 
+            email, 
             password,
             lapangan_id,
             tanggal_mulai,
-            tanggal_berakhir    ,   
+            tanggal_berakhir,   
             jam_sewa,
             status = 'aktif',
             jenis_membership = 'bulanan'
         } = req.body;
         
         // Validasi data wajib
-        if (!nama || !no_telepon || !password) {
-            return res.status(400).json({ message: "Nama, nomor telepon, dan password wajib diisi" });
+        if (!nama || !email || !password) {
+            return res.status(400).json({ message: "Nama, email, dan password wajib diisi" });
         }
         
-        // Cek apakah nomor telepon sudah terdaftar
-        const checkPhoneQuery = `SELECT id FROM member WHERE no_telepon = $1`;
-        const phoneResult = await pool.query(checkPhoneQuery, [no_telepon]);
+        // Cek apakah email sudah terdaftar
+        const checkEmailQuery = `SELECT id FROM member WHERE email = $1`;
+        const emailResult = await pool.query(checkEmailQuery, [email]);
         
-        if (phoneResult.rows.length > 0) {
-            return res.status(400).json({ message: "Nomor telepon sudah terdaftar" });
+        if (emailResult.rows.length > 0) {
+            return res.status(400).json({ message: "Email sudah terdaftar" });
         }
         
         // Hash password
@@ -463,14 +470,12 @@ export const registerMember = async (req, res) => {
         const formattedStartDate = startDate.toISOString().split('T')[0];
         const formattedEndDate = endDate.toISOString().split('T')[0];
         
-        // Generate email from phone number (since email is required in the database)
-        const generatedEmail = `member_${no_telepon}@tq1sports.com`;
-        
         // Insert member
         const query = `
             INSERT INTO member (
                 nama, 
                 no_telepon, 
+                email, 
                 password, 
                 lapangan_id, 
                 tanggal_mulai, 
@@ -479,28 +484,26 @@ export const registerMember = async (req, res) => {
                 status, 
                 jenis_membership,
                 created_at,
-                updated_at,
-                email
+                updated_at
             ) VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9,
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
                 CURRENT_TIMESTAMP,
-                CURRENT_TIMESTAMP,
-                $10
+                CURRENT_TIMESTAMP
             )
             RETURNING *
         `;
         
         const result = await pool.query(query, [
             nama, 
-            no_telepon,
+            no_telepon || null,
+            email,
             hashedPassword,
             lapangan_id,
             formattedStartDate, 
             formattedEndDate,
             jam_sewa,
             status,
-            jenis_membership,
-            generatedEmail
+            jenis_membership
         ]);
         
         const member = result.rows[0];
@@ -515,32 +518,32 @@ export const registerMember = async (req, res) => {
         });
     } catch (error) {
         console.error('Error in registerMember:', error);
-        res.status(500).json({ message: "Terjadi kesalahan saat registrasi member" });
+        res.status(500).json({ message: "Terjadi kesalahan saat registrasi member" })
     }
 };
 
 // Login member
 export const loginMember = async (req, res) => {
     try {
-        const { no_telepon, password } = req.body;
+        const { email, password } = req.body;
         
         // Validasi data wajib
-        if (!no_telepon || !password) {
-            return res.status(400).json({ message: "Nomor telepon dan password wajib diisi" });
+        if (!email || !password) {
+            return res.status(400).json({ message: "Email dan password wajib diisi" });
         }
         
-        // Query untuk mencari member berdasarkan nomor telepon
+        // Query untuk mencari member berdasarkan email
         const query = `
-            SELECT id, nama, email, password, no_telepon, tanggal_mulai, tanggal_berakhir, status, jam_mulai, jam_berakhir
+            SELECT id, nama, email, password, no_telepon, tanggal_mulai, tanggal_berakhir, status, jam_sewa
             FROM member 
-            WHERE no_telepon = $1
+            WHERE email = $1
         `;
-        const params = [no_telepon];
+        const params = [email];
         
         const result = await pool.query(query, params);
         
         if (result.rows.length === 0) {
-            return res.status(401).json({ message: "Nomor telepon atau password salah" });
+            return res.status(401).json({ message: "Email atau password salah" });
         }
         
         const member = result.rows[0];
@@ -549,7 +552,7 @@ export const loginMember = async (req, res) => {
         const isMatch = await bcrypt.compare(password, member.password);
         
         if (!isMatch) {
-            return res.status(401).json({ message: "Nomor telepon atau password salah" });
+            return res.status(401).json({ message: "Email atau password salah" });
         }
         
         // Cek status member
@@ -591,6 +594,41 @@ export const loginMember = async (req, res) => {
     }
 };
 
+// Get member profile
+export const getMemberProfile = async (req, res) => {
+    try {
+        const memberId = req.user.id; // Diambil dari token setelah otentikasi
+
+        const query = `
+            SELECT 
+                m.id, 
+                m.nama, 
+                m.email, 
+                m.no_telepon, 
+                m.tanggal_mulai, 
+                m.tanggal_berakhir, 
+                m.jam_sewa, 
+                m.status,
+                l.nama AS lapangan_nama,
+                l.tipe AS lapangan_tipe
+            FROM member m
+            LEFT JOIN lapangan l ON m.lapangan_id = l.id
+            WHERE m.id = $1
+        `;
+
+        const result = await pool.query(query, [memberId]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: "Profil member tidak ditemukan" });
+        }
+
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.error('Error in getMemberProfile:', error);
+        res.status(500).json({ message: "Terjadi kesalahan saat mengambil profil member" });
+    }
+};
+
 // Check ketersediaan lapangan untuk member
 export const checkMemberAvailability = async (req, res) => {
     try {
@@ -608,7 +646,9 @@ export const checkMemberAvailability = async (req, res) => {
         // Get waktu_sewa untuk lapangan tersebut
         const waktuSewa = await pool.query(`
             SELECT json_agg(json_build_object(
-                'jam_mulai', jam_mulai,
+               
+
+ 'jam_mulai', jam_mulai,
                 'jam_berakhir', jam_berakhir,
                 'harga', harga
             )) as waktu_sewa
@@ -634,31 +674,7 @@ export const checkMemberAvailability = async (req, res) => {
     }
 };
 
-// Get profile member
-export const getMemberProfile = async (req, res) => {
-    try {
-        const memberId = req.user.id;
-        
-        const query = `
-            SELECT m.id, m.nama, m.email, m.no_telepon, m.tanggal_mulai, m.tanggal_berakhir, 
-                   m.status, m.tipe, l.nama as lapangan_nama, l.tipe as lapangan_tipe
-            FROM member m
-            LEFT JOIN lapangan l ON m.lapangan_id = l.id
-            WHERE m.id = $1
-        `;
-        
-        const result = await pool.query(query, [memberId]);
-        
-        if (result.rows.length === 0) {
-            return res.status(404).json({ message: "Member tidak ditemukan" });
-        }
-        
-        res.json(result.rows[0]);
-    } catch (error) {
-        console.error('Error in getMemberProfile:', error);
-        res.status(500).json({ message: "Terjadi kesalahan saat mengambil profile member" });
-    }
-};
+
 
 // Update profile member
 export const updateMemberProfile = async (req, res) => {
@@ -756,15 +772,26 @@ export const getMemberBookings = async (req, res) => {
     try {
         const memberId = req.user.id;
         
-        const query = `
+        // Pertama, dapatkan nama member dari ID-nya
+        const memberQuery = 'SELECT nama FROM member WHERE id = $1';
+        const memberResult = await pool.query(memberQuery, [memberId]);
+
+        if (memberResult.rows.length === 0) {
+            return res.status(404).json({ message: "Member tidak ditemukan" });
+        }
+
+        const memberName = memberResult.rows[0].nama;
+
+        // Kemudian, cari booking berdasarkan nama pemesan
+        const bookingQuery = `
             SELECT b.*, l.nama as lapangan_nama, l.tipe as lapangan_tipe
             FROM booking b
             JOIN lapangan l ON b.lapangan_id = l.id
-            WHERE b.member_id = $1
+            WHERE b.nama_pemesan = $1
             ORDER BY b.tanggal DESC, b.jam_mulai ASC
         `;
         
-        const result = await pool.query(query, [memberId]);
+        const result = await pool.query(bookingQuery, [memberName]);
         
         res.json(result.rows);
     } catch (error) {

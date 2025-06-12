@@ -377,7 +377,7 @@ export const updateBookingStatus = async (req, res) => {
         
         const { id } = req.params;
         const { status_booking, status_pembayaran, catatan } = req.body;
-        const admin_id = req.admin.id;
+        const admin_id = req.user.id;
         
         // Get current booking status
         const currentStatusQuery = `
