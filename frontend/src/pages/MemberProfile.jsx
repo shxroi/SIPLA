@@ -4,54 +4,49 @@ import axios from 'axios';
 
 function MemberProfile() {
   const navigate = useNavigate();
-  
+
   const [formData, setFormData] = useState({
     nama: '',
+    email: '',
     no_telepon: '',
     current_password: '',
     new_password: '',
     confirm_password: ''
   });
-  
+
   const [memberData, setMemberData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-  
+
   useEffect(() => {
-    // Check if user is logged in
     const memberToken = localStorage.getItem('memberToken');
     if (!memberToken) {
       navigate('/member/login');
       return;
     }
-    
-    // Fetch member profile
+
     const fetchMemberProfile = async () => {
       try {
         setLoading(true);
-        
         const response = await axios.get('http://localhost:3000/api/member/profile', {
           headers: { 'Authorization': `Bearer ${memberToken}` }
         });
-        
         setMemberData(response.data);
         setFormData({
           nama: response.data.nama || '',
+          email: response.data.email || '',
           no_telepon: response.data.no_telepon || '',
           current_password: '',
           new_password: '',
           confirm_password: ''
         });
-        
         setLoading(false);
       } catch (error) {
         console.error('Error fetching member profile:', error);
         setError('Terjadi kesalahan saat mengambil data profil');
         setLoading(false);
-        
-        // If token is invalid, redirect to login
         if (error.response?.status === 401) {
           localStorage.removeItem('memberToken');
           localStorage.removeItem('memberUser');
@@ -59,10 +54,9 @@ function MemberProfile() {
         }
       }
     };
-    
     fetchMemberProfile();
   }, [navigate]);
-  
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -70,60 +64,49 @@ function MemberProfile() {
       [name]: value
     }));
   };
-  
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setUpdating(true);
     setError(null);
     setSuccess(null);
-    
-    // Validate password if changing
+
     if (formData.new_password || formData.current_password) {
       if (!formData.current_password) {
         setError('Password saat ini wajib diisi untuk mengubah password');
         setUpdating(false);
         return;
       }
-      
       if (!formData.new_password) {
         setError('Password baru wajib diisi');
         setUpdating(false);
         return;
       }
-      
       if (formData.new_password !== formData.confirm_password) {
         setError('Password baru dan konfirmasi password tidak sama');
         setUpdating(false);
         return;
       }
     }
-    
+
     try {
       const memberToken = localStorage.getItem('memberToken');
-      
-      // Prepare update data
       const updateData = {
         nama: formData.nama,
-        no_telepon: formData.no_telepon
+        email: formData.email,
+        no_telepon: formData.no_telepon || null
       };
-      
-      // Add password data if changing
       if (formData.current_password && formData.new_password) {
         updateData.current_password = formData.current_password;
         updateData.new_password = formData.new_password;
       }
-      
-      // Update profile
+
       const response = await axios.put('http://localhost:3000/api/member/profile', updateData, {
         headers: { 'Authorization': `Bearer ${memberToken}` }
       });
-      
-      // Update local storage with new data
+
       localStorage.setItem('memberUser', JSON.stringify(response.data.member));
-      
       setSuccess('Profil berhasil diupdate');
-      
-      // Reset password fields
       setFormData(prev => ({
         ...prev,
         current_password: '',
@@ -137,11 +120,11 @@ function MemberProfile() {
       setUpdating(false);
     }
   };
-  
+
   const handleBack = () => {
     navigate('/member/dashboard');
   };
-  
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -151,7 +134,7 @@ function MemberProfile() {
       </div>
     );
   }
-  
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-2xl mx-auto">
@@ -164,7 +147,6 @@ function MemberProfile() {
             Kembali
           </button>
         </div>
-        
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
           <div className="p-6">
             {error && (
@@ -172,13 +154,11 @@ function MemberProfile() {
                 {error}
               </div>
             )}
-            
             {success && (
               <div className="mb-4 p-3 bg-green-100 text-green-700 rounded">
                 {success}
               </div>
             )}
-            
             <form onSubmit={handleSubmit}>
               <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="nama">
@@ -194,7 +174,21 @@ function MemberProfile() {
                   placeholder="Masukkan nama lengkap"
                 />
               </div>
-              
+              <div className="mb-4">
+                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="email">
+                  Email
+                </label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                  placeholder="Masukkan email Anda"
+                  required
+                />
+              </div>
               <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="no_telepon">
                   Nomor Telepon
@@ -214,14 +208,12 @@ function MemberProfile() {
                   />
                 </div>
               </div>
-              
               <div className="mt-8 mb-4">
                 <h2 className="text-xl font-semibold text-gray-800 mb-4">Ubah Password</h2>
                 <p className="text-sm text-gray-600 mb-4">
                   Biarkan kosong jika tidak ingin mengubah password
                 </p>
               </div>
-              
               <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="current_password">
                   Password Saat Ini
@@ -236,7 +228,6 @@ function MemberProfile() {
                   placeholder="Masukkan password saat ini"
                 />
               </div>
-              
               <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="new_password">
                   Password Baru
@@ -252,7 +243,6 @@ function MemberProfile() {
                   minLength="6"
                 />
               </div>
-              
               <div className="mb-6">
                 <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="confirm_password">
                   Konfirmasi Password Baru
@@ -268,7 +258,6 @@ function MemberProfile() {
                   minLength="6"
                 />
               </div>
-              
               <div className="mt-8">
                 <button
                   type="submit"
@@ -285,12 +274,10 @@ function MemberProfile() {
             </form>
           </div>
         </div>
-        
         <div className="mt-6">
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
             <div className="p-6">
               <h2 className="text-xl font-semibold text-gray-800 mb-4">Informasi Membership</h2>
-              
               {memberData && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -313,7 +300,7 @@ function MemberProfile() {
                   <div>
                     <p className="text-gray-600">Tanggal Berakhir:</p>
                     <p className="font-medium">
-                      {new Date(memberData.tanggal_selesai).toLocaleDateString('id-ID', {
+                      {new Date(memberData.tanggal_berakhir).toLocaleDateString('id-ID', {
                         weekday: 'long',
                         year: 'numeric',
                         month: 'long',
@@ -327,7 +314,6 @@ function MemberProfile() {
                   </div>
                 </div>
               )}
-              
               <div className="mt-4">
                 <p className="text-sm text-gray-600">
                   Untuk perpanjangan membership, silakan hubungi admin TQ1 Sports Field.

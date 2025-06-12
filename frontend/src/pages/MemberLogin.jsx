@@ -6,16 +6,16 @@ import '../assets/css/tq1-landing.css';
 function MemberLogin() {
   const navigate = useNavigate();
   const location = useLocation();
-  const bookingData = location.state; // Data booking dari halaman sebelumnya (jika ada)
-  
+  const bookingData = location.state;
+
   const [formData, setFormData] = useState({
-    no_telepon: '',
+    email: '',
     password: ''
   });
-  
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -23,97 +23,83 @@ function MemberLogin() {
       [name]: value
     }));
   };
-  
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
-    
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setError('Masukkan alamat email yang valid');
+      return;
+    }
+
+    setLoading(true);
     try {
-      // Kirim data login
       const response = await axios.post('http://localhost:3000/api/member/login', {
-        no_telepon: formData.no_telepon,
+        email: formData.email,
         password: formData.password
       });
-      
-      // Simpan token dan data member ke localStorage
-      localStorage.setItem('memberToken', response.data.token);
-      localStorage.setItem('memberUser', JSON.stringify(response.data.member));
-      
-      // Redirect ke halaman member atau booking jika ada data booking
-      if (bookingData) {
-        navigate('/member/booking', { state: bookingData });
-      } else {
-        navigate('/member/dashboard');
+
+      if (response.data.token) {
+        localStorage.setItem('memberToken', response.data.token);
+        localStorage.setItem('memberUser', JSON.stringify(response.data.member));
+        navigate(bookingData ? '/member/booking' : '/member/dashboard', { state: bookingData });
       }
-    } catch (error) {
-      console.error('Error logging in:', error);
-      
-      // Handle expired membership
-      if (error.response?.data?.expired) {
-        setError('Membership Anda telah berakhir. Silakan perpanjang membership Anda.');
-      } else {
-        setError(error.response?.data?.message || 'Terjadi kesalahan saat login');
-      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Login gagal. Periksa email dan password Anda.');
     } finally {
       setLoading(false);
     }
   };
-  
+
   return (
     <div className="login-container py-8">
       <div className="container mx-auto px-4">
         <div className="max-w-5xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="flex flex-col md:flex-row">
-            {/* Left side - Branding */}
             <div className="md:w-2/5 bg-gradient-to-br from-blue-500 to-purple-600 p-8 text-white flex flex-col justify-between">
               <div>
                 <h1 className="text-3xl font-bold mb-4">TQ1 Sports</h1>
-                <p className="text-sm opacity-80 mb-8 text-white">Login to your account to access our premium badminton courts and manage your membership.</p>
+                <p className="text-sm opacity-80 mb-8 text-white">Login ke akun Anda untuk mengakses lapangan bulutangkis premium kami dan mengelola keanggotaan Anda.</p>
               </div>
-              
               <div className="text-center">
                 <img src="/src/assets/images/badminton.png" alt="Badminton" className="w-48 h-48 mx-auto mb-10" />
                 <button className="bg-white bg-opacity-20 hover:bg-opacity-30 text-blue-600 py-3 px-6 rounded-full w-full transition duration-300">
-                  LOGIN NOW
+                  LOGIN SEKARANG
                 </button>
               </div>
-              
               <div className="mt-8 text-xs text-center opacity-70">
                 <p className="text-white">© 2025 TQ1 Sports Field. All rights reserved.</p>
               </div>
             </div>
-            
-            {/* Right side - Form */}
             <div className="md:w-3/5 p-8 flex flex-col justify-center">
               <div className="text-center mb-6">
                 <h2 className="text-2xl font-bold text-gray-800">Login</h2>
-                <p className="text-sm text-gray-500">Welcome back! Login to your account</p>
+                <p className="text-sm text-gray-500">Selamat datang kembali! Login ke akun Anda</p>
               </div>
-              
               {error && (
                 <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
                   {error}
                 </div>
               )}
-              
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                  <label className="block text-gray-700 text-sm font-medium mb-2" htmlFor="no_telepon">
-                    Nomor Telepon
+                  <label className="block text-gray-700 text-sm font-medium mb-2" htmlFor="email">
+                    Email
                   </label>
                   <input
-                    id="no_telepon"
-                    name="no_telepon"
-                    type="text"
-                    value={formData.no_telepon}
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={formData.email}
                     onChange={handleChange}
                     className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Masukkan nomor telepon Anda"
+                    placeholder="Masukkan email Anda"
                     required
                   />
                 </div>
-                
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <label className="block text-gray-700 text-sm font-medium" htmlFor="password">
@@ -132,7 +118,6 @@ function MemberLogin() {
                     placeholder="Masukkan password"
                   />
                 </div>
-                
                 <div className="flex items-center">
                   <input
                     id="remember"
@@ -143,7 +128,6 @@ function MemberLogin() {
                     Ingat saya
                   </label>
                 </div>
-                
                 <button
                   type="submit"
                   disabled={loading}
@@ -152,7 +136,6 @@ function MemberLogin() {
                   {loading ? 'Memproses...' : 'Login'}
                 </button>
               </form>
-              
               <div className="mt-6 text-center">
                 <p className="text-sm text-gray-600">
                   Belum memiliki akun? {' '}
@@ -161,7 +144,6 @@ function MemberLogin() {
                   </Link>
                 </p>
               </div>
-              
               <div className="mt-8">
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
@@ -171,7 +153,6 @@ function MemberLogin() {
                     <span className="px-2 bg-white text-gray-500">Atau login dengan</span>
                   </div>
                 </div>
-                
                 <div className="mt-6 grid grid-cols-3 gap-3">
                   <button className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
                     <span className="sr-only">Google</span>

@@ -29,7 +29,7 @@ const BadmintonMembers = () => {
       setLoading(true);
       const { token } = JSON.parse(localStorage.getItem('adminUser') || '{}');
       
-      const response = await axios.get('http://localhost:3000/api/member', {
+      const response = await axios.get('http://localhost:3000/api/admin/member', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -172,7 +172,7 @@ const BadmintonMembers = () => {
       if (editingId) {
         // Update existing member (exclude password)
         const { password, ...updateData } = memberData;
-        await axios.put(`http://localhost:3000/api/member/${editingId}`, updateData, {
+        await axios.put(`http://localhost:3000/api/admin/member/${editingId}`, updateData, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -189,7 +189,7 @@ const BadmintonMembers = () => {
         }
         
         // Create new member
-        await axios.post('http://localhost:3000/api/member', memberData, {
+        await axios.post('http://localhost:3000/api/admin/member', memberData, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -238,7 +238,7 @@ const BadmintonMembers = () => {
     try {
       const { token } = JSON.parse(localStorage.getItem('adminUser') || '{}');
       
-      await axios.delete(`http://localhost:3000/api/member/${id}`, {
+      await axios.delete(`http://localhost:3000/api/admin/member/${id}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -266,7 +266,7 @@ const BadmintonMembers = () => {
       const formattedNewEndDate = newEndDate.toISOString().split('T')[0];
       
       // Update member dengan tanggal berakhir baru
-      await axios.put(`http://localhost:3000/api/member/${member.id}`, {
+      await axios.put(`http://localhost:3000/api/admin/member/${member.id}`, {
         ...member,
         tanggal_berakhir: formattedNewEndDate
       }, {

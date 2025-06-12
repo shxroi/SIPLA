@@ -208,7 +208,7 @@ const BookingRegular = () => {
         <BookingStatusUpdate 
           booking={selectedBooking}
           onClose={() => setShowStatusModal(false)}
-          onSuccess={handleStatusUpdateSuccess}
+          onSubmit={handleStatusUpdateSuccess}
         />
       )}
 
